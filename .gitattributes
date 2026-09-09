@@ -1,0 +1,16 @@
+# Ujednacen zavrsetak redaka - bez ovoga git na Windowsu upozorava pri svakom dodavanju.
+* text=auto
+
+# Skripte koje moraju zadrzati svoj oblik
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+gradlew text eol=lf
+
+# Binarno - nikad ne dirati
+*.png  binary
+*.jpg  binary
+*.jar  binary
+*.woff2 binary
+*.ttf  binary
+*.keystore binary
+*.jks  binary

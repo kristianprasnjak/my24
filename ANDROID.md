@@ -8,6 +8,10 @@ postoji samo jedan izvor istine i nema dvije verzije koje se razilaze.
 
 Treba ti Node.js i Android Studio (oboje rade na Windowsu).
 
+> **Node mora biti 22 ili noviji.** Capacitor 8 odbija raditi na starijem.
+> Provjeri s `node --version`; ako piše v20 ili manje, preuzmi LTS s
+> <https://nodejs.org> i nakon instalacije **zatvori i ponovno otvori terminal**.
+
 ```
 npm install @capacitor/core @capacitor/cli @capacitor/android
 npm install @capacitor-community/sqlite @capacitor/filesystem @capacitor/share

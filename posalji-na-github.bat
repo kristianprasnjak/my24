@@ -3,6 +3,10 @@ setlocal EnableDelayedExpansion
 chcp 65001 >nul
 cd /d "%~dp0"
 
+REM Bez ovoga git dugacke popise gura kroz preglednik i skripta stane na (END).
+set "GIT_PAGER=cat"
+set "PAGER=cat"
+
 echo.
 echo ==========================================
 echo   my24  -  slanje na GitHub
@@ -48,9 +52,16 @@ if not errorlevel 1 (
   goto :kraj
 )
 
-echo Promjene koje se salju:
+set BROJ=0
+for /f %%c in ('git diff --cached --name-only ^| find /c /v ""') do set BROJ=%%c
+echo Promjena za slanje: !BROJ!
 echo ------------------------------------------
-git diff --cached --name-status
+if !BROJ! LEQ 25 (
+  git --no-pager diff --cached --name-status
+) else (
+  git --no-pager diff --cached --name-status --diff-filter=M
+  echo   ... i jos datoteka. Puni popis:  git status
+)
 echo ------------------------------------------
 echo.
 

@@ -1,0 +1,14 @@
+{
+  "appId": "com.example.my24",
+  "appName": "my24",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#F1F1EE"
+  },
+  "plugins": {
+    "CapacitorSQLite": {
+      "androidIsEncryption": false
+    }
+  }
+}

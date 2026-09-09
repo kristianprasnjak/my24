@@ -1,0 +1,48 @@
+# ============================================================
+#  my24
+# ============================================================
+
+# --- POTPISIVANJE: nikad u repozitorij ---
+# Ključem se potpisuje aplikacija. Ako procuri, netko drugi može
+# objaviti nadogradnju koja izgleda kao tvoja.
+*.jks
+*.keystore
+keystore.properties
+key.properties
+
+# --- ovisnosti ---
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# --- generirano ---
+# www/index.html nastaje iz Kronos_moderniziran.html preko build.js
+www/
+
+# --- Android ---
+# Mapa android/ SE ČUVA u repozitoriju: tamo idu dozvole, ikone
+# i kasnije native kod za lebdeći gumb. Ignoriraju se samo rezultati
+# prevođenja i lokalne postavke.
+android/build/
+android/app/build/
+android/.gradle/
+android/.idea/
+android/local.properties
+android/app/release/
+android/app/debug/
+android/capacitor-cordova-android-plugins/
+*.apk
+*.aab
+
+# --- iOS, ako jednom zatreba ---
+ios/App/Pods/
+ios/App/build/
+ios/App/output/
+
+# --- alati i sustav ---
+.idea/
+.vscode/
+.claude/
+.DS_Store
+Thumbs.db
+desktop.ini

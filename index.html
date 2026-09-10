@@ -486,6 +486,42 @@ input{border:none;outline:none;background:none}
   background:var(--surface);border-radius:2px;padding:1px 2px 1px 0;
 }
 
+/* Prosirenje kalendara preko cijelog zaslona.
+   Tipka za prosirenje je tiha, tipka za povratak nije. */
+.tt-exp{
+  width:30px;height:30px;flex:none;border-radius:3px;
+  border:1px solid var(--line);background:var(--surface);color:var(--text-3);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .12s, color .16s, border-color .16s;
+}
+.tt-exp:active{transform:scale(.9);color:var(--text);border-color:var(--text-3)}
+.tt-collapse{
+  width:100%;height:48px;margin-top:10px;flex:none;border-radius:3px;
+  background:var(--accent);color:var(--bg);
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  font-size:15px;font-weight:600;letter-spacing:-.01em;
+  transition:transform .12s;
+}
+.tt-collapse:active{transform:scale(.985)}
+
+body.tl-full{overflow:hidden}
+body.tl-full .hdr,
+body.tl-full .actions,
+body.tl-full #onboard,
+body.tl-full #now,
+body.tl-full #quick-block,
+body.tl-full .daystrip,
+body.tl-full #view-seg{display:none}
+body.tl-full .main{
+  height:100dvh;display:flex;flex-direction:column;
+  padding-top:calc(var(--safe-t) + 10px);
+  padding-bottom:calc(var(--safe-b) + 10px);
+}
+body.tl-full #tl-nav{flex:none}
+body.tl-full #view-tl{flex:1;min-height:0;display:flex;flex-direction:column}
+body.tl-full .tt{flex:1;min-height:0;max-height:none}
+body.tl-full .zoomer{flex:none}
+
 /* prazno stanje */
 .empty{
   text-align:center;padding:44px 24px;color:var(--text-3);
@@ -671,6 +707,26 @@ textarea.inp{height:auto;min-height:60px;padding:12px 14px;resize:none;line-heig
   margin-top:2px;font-size:11.5px;font-weight:600;color:var(--text-2);
   font-variant-numeric:tabular-nums;opacity:.9;
 }
+/* Gumb u stanju upozorenja: nije potvrda, nije opasnost - poziv da pogledas. */
+.sheet-ft .btn-main.warn{
+  background:var(--danger-soft);
+  color:var(--danger);
+  box-shadow:inset 0 0 0 1.5px var(--danger);
+}
+.sheet-ft .btn-main.warn:active{transform:scale(.97)}
+
+/* Kratko skretanje paznje kad te gumb dovede do uzroka. */
+.conflict.attention{animation:cfAttn 1.15s cubic-bezier(.22,1,.36,1)}
+@keyframes cfAttn{
+  0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--danger) 38%, transparent);transform:translateY(0)}
+  16%{transform:translateY(-3px)}
+  34%{transform:translateY(0)}
+  100%{box-shadow:0 0 0 14px color-mix(in srgb, var(--danger) 0%, transparent);transform:translateY(0)}
+}
+@media (prefers-reduced-motion: reduce){
+  .conflict.attention{animation:none;box-shadow:0 0 0 3px color-mix(in srgb, var(--danger) 30%, transparent)}
+}
+
 .cf-btn{
   margin-top:10px;height:36px;padding:0 15px;border-radius:3px;
   background:var(--danger);color:#fff;font-size:13.5px;font-weight:700;
@@ -926,19 +982,28 @@ textarea.inp{height:auto;min-height:60px;padding:12px 14px;resize:none;line-heig
   transform:translate(-50%, calc(100% + 40px));
   max-width:420px;width:calc(100% - 32px);
   background:var(--text);color:var(--bg);
-  border-radius:3px;padding:13px 15px;
-  display:flex;align-items:center;gap:12px;
+  border-radius:3px;padding:10px 10px 10px 14px;
+  display:flex;align-items:center;gap:10px;
   box-shadow:var(--sh-2);
   font-size:13px;font-weight:600;
-  transition:transform .4s cubic-bezier(.22,1,.36,1);
+  transition:transform .4s cubic-bezier(.22,1,.36,1), bottom .25s ease;
 }
 .toast.on{transform:translate(-50%,0)}
 .toast .tt-msg{flex:1;min-width:0}
+/* Toast je tamna ploha; sve na njoj mora uzeti boju plohe ispod, ne naglasak. */
 .toast button{
-  flex:none;font-size:13px;font-weight:800;color:var(--accent-2);
-  padding:4px 2px;
+  flex:none;font-size:13px;font-weight:800;color:var(--bg);
+  padding:4px 2px;text-decoration:underline;text-underline-offset:3px;
 }
-@media (prefers-color-scheme: dark){ .toast button{color:var(--accent)} }
+.toast .tt-x{
+  width:24px;height:24px;border-radius:3px;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  opacity:.5;font-weight:700;text-decoration:none;
+  transition:opacity .15s;
+}
+.toast .tt-x:active{opacity:1}
+/* Dok je sheet otvoren, toast se digne iznad njegova podnozja da ne prekrije Spremi. */
+body.sheet-open .toast{bottom:calc(96px + var(--safe-b))}
 
 /* ============================================================
    Pristupačnost
@@ -1353,6 +1418,7 @@ textarea.inp{height:auto;min-height:60px;padding:12px 14px;resize:none;line-heig
 <div class="toast" id="toast">
   <span class="tt-msg" id="toast-msg"></span>
   <button id="toast-act"></button>
+  <button class="tt-x" id="toast-x" aria-label="X">&#10005;</button>
 </div>
 
 <script>
@@ -1374,6 +1440,9 @@ const LANGS = [
 
 const T = {
 hr:{
+ adjusted:"Prilagođeno",
+ expand:"Proširi", collapse:"Smanji",
+ checkOverlap:"Provjeri preklapanje",
  dataSec:"Podaci", exportBtn:"Izvoz", importBtn:"Uvoz", imported:"Uvezeno", importBad:"Datoteka nije ispravna",
  widget:"Widget",
  marks:"Oznake", floating:"Lebdeći gumb", tapSugg:"Dodirni prijedlog", startCats:"Kreni od kategorija",
@@ -1420,6 +1489,9 @@ hr:{
  sn:["Spavanje","Posao","Hrana","Trening","Odmor","Učenje","Prijevoz","Kućanstvo","Druženje","Ekrani","Šetnja","Hobi"]
 },
 en:{
+ adjusted:"Adjusted",
+ expand:"Expand", collapse:"Collapse",
+ checkOverlap:"Check the overlap",
  dataSec:"Data", exportBtn:"Export", importBtn:"Import", imported:"Imported", importBad:"That file is not valid",
  widget:"Widget",
  marks:"Marks", floating:"Floating button", tapSugg:"Tap a suggestion", startCats:"Start with categories",
@@ -1466,6 +1538,9 @@ en:{
  sn:["Sleep","Work","Food","Workout","Rest","Learning","Transport","Household","Social","Screens","Walk","Hobby"]
 },
 de:{
+ adjusted:"Angepasst",
+ expand:"Erweitern", collapse:"Verkleinern",
+ checkOverlap:"Überschneidung prüfen",
  dataSec:"Daten", exportBtn:"Export", importBtn:"Import", imported:"Importiert", importBad:"Datei ist ungültig",
  widget:"Widget",
  marks:"Zeichen", floating:"Schwebender Knopf", tapSugg:"Tippe einen Vorschlag", startCats:"Mit Kategorien beginnen",
@@ -1512,6 +1587,9 @@ de:{
  sn:["Schlaf","Arbeit","Essen","Training","Erholung","Lernen","Transport","Haushalt","Soziales","Bildschirm","Spaziergang","Hobby"]
 },
 es:{
+ adjusted:"Ajustado",
+ expand:"Ampliar", collapse:"Reducir",
+ checkOverlap:"Revisa el solapamiento",
  dataSec:"Datos", exportBtn:"Exportar", importBtn:"Importar", imported:"Importado", importBad:"El archivo no es válido",
  widget:"Widget",
  marks:"Marcas", floating:"Botón flotante", tapSugg:"Toca una sugerencia", startCats:"Empieza por las categorías",
@@ -1558,6 +1636,9 @@ es:{
  sn:["Dormir","Trabajo","Comida","Ejercicio","Descanso","Estudio","Transporte","Hogar","Social","Pantallas","Paseo","Afición"]
 },
 fr:{
+ adjusted:"Ajusté",
+ expand:"Agrandir", collapse:"Réduire",
+ checkOverlap:"Vérifier le chevauchement",
  dataSec:"Données", exportBtn:"Exporter", importBtn:"Importer", imported:"Importé", importBad:"Fichier non valide",
  widget:"Widget",
  marks:"Repères", floating:"Bouton flottant", tapSugg:"Touche une suggestion", startCats:"Commence par les catégories",
@@ -1604,6 +1685,9 @@ fr:{
  sn:["Sommeil","Travail","Repas","Sport","Repos","Apprentissage","Transport","Maison","Social","Écrans","Marche","Loisir"]
 },
 it:{
+ adjusted:"Adattato",
+ expand:"Espandi", collapse:"Riduci",
+ checkOverlap:"Controlla la sovrapposizione",
  dataSec:"Dati", exportBtn:"Esporta", importBtn:"Importa", imported:"Importato", importBad:"File non valido",
  widget:"Widget",
  marks:"Segni", floating:"Pulsante flottante", tapSugg:"Tocca un suggerimento", startCats:"Inizia dalle categorie",
@@ -1650,6 +1734,9 @@ it:{
  sn:["Sonno","Lavoro","Cibo","Allenamento","Riposo","Studio","Trasporto","Casa","Sociale","Schermi","Passeggiata","Hobby"]
 },
 pt:{
+ adjusted:"Ajustado",
+ expand:"Expandir", collapse:"Reduzir",
+ checkOverlap:"Verifica a sobreposição",
  dataSec:"Dados", exportBtn:"Exportar", importBtn:"Importar", imported:"Importado", importBad:"Ficheiro inválido",
  widget:"Widget",
  marks:"Marcas", floating:"Botão flutuante", tapSugg:"Toca numa sugestão", startCats:"Começa pelas categorias",
@@ -1696,6 +1783,9 @@ pt:{
  sn:["Sono","Trabalho","Comida","Treino","Descanso","Estudo","Transporte","Casa","Social","Ecrãs","Caminhada","Hobby"]
 },
 ru:{
+ adjusted:"Подогнано",
+ expand:"Развернуть", collapse:"Свернуть",
+ checkOverlap:"Проверь пересечение",
  dataSec:"Данные", exportBtn:"Экспорт", importBtn:"Импорт", imported:"Импортировано", importBad:"Файл повреждён",
  widget:"Виджет",
  marks:"Значки", floating:"Плавающая кнопка", tapSugg:"Нажми подсказку", startCats:"Начни с категорий",
@@ -1742,6 +1832,9 @@ ru:{
  sn:["Сон","Работа","Еда","Тренировка","Отдых","Учёба","Транспорт","Дом","Общение","Экраны","Прогулка","Хобби"]
 },
 zh:{
+ adjusted:"已调整",
+ expand:"展开", collapse:"收起",
+ checkOverlap:"查看重叠",
  dataSec:"数据", exportBtn:"导出", importBtn:"导入", imported:"已导入", importBad:"文件无效",
  widget:"小组件",
  marks:"标记", floating:"悬浮按钮", tapSugg:"点一下建议", startCats:"从类别开始",
@@ -1788,6 +1881,9 @@ zh:{
  sn:["睡眠","工作","饮食","锻炼","休息","学习","交通","家务","社交","屏幕","散步","爱好"]
 },
 ja:{
+ adjusted:"調整しました",
+ expand:"拡大", collapse:"戻す",
+ checkOverlap:"重複を確認",
  dataSec:"データ", exportBtn:"エクスポート", importBtn:"インポート", imported:"インポート済み", importBad:"ファイルが不正です",
  widget:"ウィジェット",
  marks:"記号", floating:"フローティングボタン", tapSugg:"候補をタップ", startCats:"カテゴリーから始める",
@@ -1878,6 +1974,11 @@ let ttDay   = null;                     // dan koji je zadnji iscrtan (za cuvanj
 /* Zumiranje kalendara: 0 = cijeli dan stane, 1 = maksimalni detalj. */
 const PPH_MIN = 22, PPH_MAX = 320;
 let tlScale = LS.get('kr_scale') === 'week' ? 'week' : 'day';
+let tlFull = false;                     // kalendar preko cijelog zaslona
+let ttSpan = 0;                         // koliko je sati trenutno na mrezi
+let zoomSaved = null;                   // zum prije prosirenja, za povratak
+const ICO_EXPAND = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.6V4h5.6M20 14.4V20h-5.6M4.3 4.3l6 6M19.7 19.7l-6-6"/></svg>';
+const ICO_COLLAPSE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.2 4.4v5.8H4.4M13.8 19.6v-5.8h5.8M4.4 4.4l5.8 5.8M19.6 19.6l-5.8-5.8"/></svg>';
 let stripBack = 30;                     // koliko dana unatrag traka trenutno nudi
 let zoom = parseFloat(LS.get('kr_zoom'));
 if (!(zoom >= 0 && zoom <= 1)) zoom = 0.4;
@@ -1886,6 +1987,7 @@ let anRange = 'day';
 
 let evMode = 'start', evId = null, evCat = null, evS = new Date(), evE = null;
 let mgTab = 'cats', qCatSel = null, backToEvent = false, openPicker = null, histOpen = false;
+let evConflict = false;   // postoji li nerazrijeseno preklapanje u otvorenom unosu
 let tickTimer = null, toastTimer = null, undoSnap = null;
 
 const t   = k => (T[lang] && T[lang][k] != null) ? T[lang][k] : T.hr[k];
@@ -2651,6 +2753,7 @@ function renderWeekGrid(host, keepScroll) {
 
   if (!any) {
     ttDay = null;
+    if (tlFull) setTimelineFull(false);
     host.innerHTML = '<div class="empty"><div class="e">\u{1F5D3}️</div><p>' + esc(t('emptyDay')) + '</p></div>';
     return;
   }
@@ -2659,6 +2762,7 @@ function renderWeekGrid(host, keepScroll) {
   if (days.indexOf(today) >= 0) { const nh = new Date().getHours(); h0 = Math.min(h0, nh); h1 = Math.max(h1, nh + 1); }
   h0 = Math.max(0, h0); h1 = Math.min(24, Math.max(h1, h0 + 3));
   const span = h1 - h0;
+  ttSpan = span;
   const H = x => 'calc(var(--pph) * ' + x.toFixed(4) + ')';
 
   let lines = '';
@@ -2702,9 +2806,7 @@ function renderWeekGrid(host, keepScroll) {
     '<div class="tt wk-mode" id="tt-box">' + head +
       '<div class="tt-grid' + (keepScroll === null ? ' anim' : '') + '" id="tt-grid" style="height:' + H(span) + '">' +
       lines + '<div class="wk-cols">' + cols + '</div>' + nowLine + '</div></div>' +
-    '<div class="zoomer"><i class="zi s"></i>' +
-    '<input type="range" id="tt-zoom" min="0" max="1" step="0.001" value="' + zoom + '" aria-label="Zoom">' +
-    '<i class="zi l"></i></div>';
+    zoomerMarkup();
 
   const box = $('tt-box');
   fitTimetable();
@@ -2717,7 +2819,7 @@ function renderWeekGrid(host, keepScroll) {
   }
   ttDay = 'W' + days[0];
 
-  $('tt-zoom').oninput = e => setZoom(parseFloat(e.target.value));
+  bindZoomer();
   host.querySelectorAll('.tt-ev').forEach(e => e.onclick = () => openEvent('manual', e.dataset.id));
   bindGaps(host, e => e.closest('.wk-col').dataset.d);
   host.querySelectorAll('.wk-d').forEach(b => b.onclick = () => {
@@ -2827,6 +2929,7 @@ function renderTimeline() {
   if (isToday) { const nh = new Date().getHours(); h0 = Math.min(h0, nh); h1 = Math.max(h1, nh + 1); }
   h0 = Math.max(0, h0); h1 = Math.min(24, Math.max(h1, h0 + 3));
   const span = h1 - h0;
+  ttSpan = span;
 
   assignLanes(items);
 
@@ -2863,9 +2966,7 @@ function renderTimeline() {
 
   host.innerHTML =
     '<div class="tt" id="tt-box"><div class="tt-grid' + (keepScroll === null ? ' anim' : '') + '" id="tt-grid" style="height:' + H(span) + '">' + g + '</div></div>' +
-    '<div class="zoomer"><i class="zi s"></i>' +
-    '<input type="range" id="tt-zoom" min="0" max="1" step="0.001" value="' + zoom + '" aria-label="Zoom">' +
-    '<i class="zi l"></i></div>';
+    zoomerMarkup();
 
   const box = $('tt-box');
   fitTimetable();
@@ -2880,14 +2981,99 @@ function renderTimeline() {
   }
   ttDay = selDay;
 
-  $('tt-zoom').oninput = e => setZoom(parseFloat(e.target.value));
+  bindZoomer();
   host.querySelectorAll('.tt-ev').forEach(e => e.onclick = () => openEvent('manual', e.dataset.id));
   bindGaps(host, () => selDay);
+}
+
+/* Namjesti zum tako da prikazani raspon sati tocno ispuni kalendar. */
+function fitZoomToView() {
+  const box = $('tt-box');
+  if (!box || !ttSpan) return;
+  const head = box.querySelector('.wk-head');
+  const pad = 32 + (head ? head.getBoundingClientRect().height : 0);
+  const avail = box.clientHeight - pad;
+  if (avail <= 0) return;
+  const pph = avail / ttSpan;
+  const z = Math.log(pph / PPH_MIN) / Math.log(PPH_MAX / PPH_MIN);
+  zoom = Math.max(0, Math.min(1, z));
+  const zi = $('tt-zoom'); if (zi) zi.value = zoom;
+  applyZoom();
+}
+
+/* Fader, tiha tipka za prosirenje, a u punom zaslonu i jasna tipka za povratak. */
+function zoomerMarkup() {
+  return '<div class="zoomer"><i class="zi s"></i>' +
+    '<input type="range" id="tt-zoom" min="0" max="1" step="0.001" value="' + zoom + '" aria-label="Zoom">' +
+    '<i class="zi l"></i>' +
+    (tlFull ? '' : '<button class="tt-exp" id="tt-exp" aria-label="' + esc(t('expand')) + '">' + ICO_EXPAND + '</button>') +
+    '</div>' +
+    (tlFull ? '<button class="tt-collapse" id="tt-col">' + ICO_COLLAPSE +
+              '<span>' + esc(t('collapse')) + '</span></button>' : '');
+}
+
+function bindZoomer() {
+  const z = $('tt-zoom');
+  if (z) z.oninput = e => setZoom(parseFloat(e.target.value));
+  const e1 = $('tt-exp'); if (e1) e1.onclick = () => setTimelineFull(true);
+  const e2 = $('tt-col'); if (e2) e2.onclick = () => setTimelineFull(false);
+}
+
+/* Kalendar raste prema gore: pamtimo stari pravokutnik, pustimo novi
+   raspored, pa animiramo od staroga do novoga. */
+function setTimelineFull(on) {
+  const box = $('tt-box');
+  if (!box || on === tlFull) return;
+  const r0 = box.getBoundingClientRect();
+
+  if (on) zoomSaved = zoom;
+  tlFull = on;
+  document.body.classList.toggle('tl-full', on);
+  if (on) window.scrollTo(0, 0);
+
+  const host = $('view-tl');
+  const foot = host.querySelector('.zoomer');
+  if (foot) {
+    const old = host.querySelector('.tt-collapse');
+    if (old) old.remove();
+    foot.outerHTML = zoomerMarkup();
+    bindZoomer();
+  }
+  fitTimetable();
+
+  const r1 = box.getBoundingClientRect();
+  box.style.transition = 'none';
+  box.style.maxHeight = 'none';
+  box.style.height = r0.height + 'px';
+  box.style.transform = 'translateY(' + (r0.top - r1.top) + 'px)';
+  void box.offsetWidth;
+  box.style.transition = 'height .42s cubic-bezier(.22,1,.36,1), transform .42s cubic-bezier(.22,1,.36,1)';
+  box.style.height = r1.height + 'px';
+  box.style.transform = 'translateY(0)';
+
+  let settled = false;
+  const done = () => {
+    if (settled) return;
+    settled = true;
+    box.removeEventListener('transitionend', done);
+    box.style.transition = ''; box.style.transform = ''; box.style.height = '';
+    fitTimetable();
+    if (tlFull) {
+      fitZoomToView();                              // dan ispuni ekran
+    } else if (zoomSaved !== null) {
+      zoom = zoomSaved; zoomSaved = null;           // vrati zum kakav je bio
+      const zi = $('tt-zoom'); if (zi) zi.value = zoom;
+    }
+    applyZoom();
+  };
+  box.addEventListener('transitionend', done);
+  setTimeout(done, 520);
 }
 
 /* Kalendar zauzme sav preostali prostor, ali tako da fader ispod njega ostane vidljiv. */
 function fitTimetable() {
   const box = $('tt-box'); if (!box) return;
+  if (tlFull) { box.style.maxHeight = ''; return; }   /* visinu odreduje raspored */
   const docTop = box.getBoundingClientRect().top + window.scrollY;
   const avail = window.innerHeight - docTop - 78;
   box.style.maxHeight = Math.max(220, Math.min(avail, 640)) + 'px';
@@ -2895,6 +3081,7 @@ function fitTimetable() {
 
 /* Zumiranje zadrzava sredinu vidljivog dijela na istom vremenu. */
 function setZoom(v) {
+  zoomSaved = null;                     // rucna promjena ponistava automatski povratak
   const box = $('tt-box');
   const anchor = box ? (box.scrollTop + box.clientHeight / 2) / pxPerHour() : null;
   zoom = Math.min(1, Math.max(0, v));
@@ -3016,11 +3203,15 @@ function openSheet(id) {
   $('scrim-' + id).classList.add('on');
   $('sheet-' + id).classList.add('on');
   document.body.style.overflow = 'hidden';
+  document.body.classList.add('sheet-open');
 }
 function closeSheet(id) {
   $('scrim-' + id).classList.remove('on');
   $('sheet-' + id).classList.remove('on');
-  if (!document.querySelector('.sheet.on')) document.body.style.overflow = '';
+  if (!document.querySelector('.sheet.on')) {
+    document.body.style.overflow = '';
+    document.body.classList.remove('sheet-open');
+  }
   if (id === 'manage') afterManageClose();
 }
 
@@ -3074,6 +3265,7 @@ function catPills(host, selectedId, onPick, withGhost, withNone) {
 function openEvent(mode, logId, preset) {
   if (!liveCats().length) { openManage('cats'); return; }
   histOpen = false;
+  evConflict = false;
   evId = logId || null;
 
   if (evId) {
@@ -3270,13 +3462,22 @@ function applyOverlapPlan(plan) {
 function renderConflict() {
   const box = $('ev-conflict');
   const plan = overlapPlan(+evS, evE ? +evE : null, evId);
+  const btn = $('ev-save');
   if (!plan.length) {
+    evConflict = false;
     box.classList.add('hide'); box.innerHTML = '';
-    $('ev-save').disabled = false;
+    box.classList.remove('attention');
+    btn.disabled = false;
+    btn.classList.remove('warn');
+    btn.textContent = t('save');
     return;
   }
+  /* Gumb se ne gasi. Ostaje pritisnjiv i vodi do uzroka. */
+  evConflict = true;
   box.classList.remove('hide');
-  $('ev-save').disabled = true;
+  btn.disabled = false;
+  btn.classList.add('warn');
+  btn.textContent = t('checkOverlap');
   box.innerHTML =
     '<div class="cf-h"><span>⚠</span><span>' + esc(t('conflict')) + '</span></div>' +
     plan.map(p => {
@@ -3300,7 +3501,7 @@ function renderConflict() {
     save();
     renderEvent();
     renderAll();
-    toast(t('adjust'), true);
+    toast(t('adjusted'), true);
   };
 }
 
@@ -3343,7 +3544,19 @@ function syncTimes() {
   renderConflict();
 }
 
+/* Odvede pogled na upozorenje i nakratko ga istakne. */
+function showConflict() {
+  const box = $('ev-conflict');
+  if (box.classList.contains('hide')) return;
+  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  box.classList.remove('attention');
+  void box.offsetWidth;                       // ponovno pokretanje animacije
+  box.classList.add('attention');
+  setTimeout(() => box.classList.remove('attention'), 1300);
+}
+
 function saveEvent() {
+  if (evConflict) { showConflict(); return; }
   snap();
   const rec = {
     title: $('ev-name').value.trim(),
@@ -3613,6 +3826,7 @@ function bind() {
     $('view-seg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
     $('view-tl').classList.toggle('hide', view !== 'tl');
     $('view-an').classList.toggle('hide', view !== 'an');
+    if (view !== 'tl' && tlFull) setTimelineFull(false);
     $('tl-nav').classList.toggle('hide', view !== 'tl');
     view === 'tl' ? renderTimeline() : renderAnalytics();
   });
@@ -3648,6 +3862,7 @@ function bind() {
   $('q-add').onclick = addQuick;
 
   $('toast-act').onclick = undo;
+  $('toast-x').onclick = hideToast;
 
   document.querySelectorAll('[data-close]').forEach(e => e.onclick = () => closeSheet(e.dataset.close));
 
@@ -3659,7 +3874,10 @@ function bind() {
   window.addEventListener('hashchange', routeMockup);
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') document.querySelectorAll('.sheet.on').forEach(s => closeSheet(s.id.replace('sheet-', '')));
+    if (e.key !== 'Escape') return;
+    const open = document.querySelectorAll('.sheet.on');
+    if (open.length) { open.forEach(s => closeSheet(s.id.replace('sheet-', ''))); return; }
+    if (tlFull) setTimelineFull(false);
   });
 
   // osvježi vremensku crtu kad se aplikacija vrati u prvi plan

@@ -1,6 +1,6 @@
 # my24 — Android
 
-Radni file je i dalje **`Kronos_moderniziran.html`**. Otvara se dvoklikom i radi sam za sebe.
+Radni file je i dalje **`index.html`**. Otvara se dvoklikom i radi sam za sebe.
 `build.js` ga kopira u `www/index.html`, odakle ga Capacitor pakira u aplikaciju — dakle
 postoji samo jedan izvor istine i nema dvije verzije koje se razilaze.
 

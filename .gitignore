@@ -16,7 +16,7 @@ npm-debug.log*
 yarn-error.log*
 
 # --- generirano ---
-# www/index.html nastaje iz Kronos_moderniziran.html preko build.js
+# www/index.html nastaje iz index.html preko build.js
 www/
 
 # --- Android ---

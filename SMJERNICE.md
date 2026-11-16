@@ -19,7 +19,11 @@ prije svakog prijedloga ili mockupa provjeriti da ga ništa ovdje ne krši.
 - Popis dana zauzima previše mjesta. Mora biti elegantniji i **ne uvijek vidljiv**.
 - Kalendar je u **posebnom tabu/prozoru**. Vidljivi kalendar pokazuje samo **nekoliko događaja**, bez praznog prostora.
 - **Analiza duboko skrivena.**
-- **Kategorije i brze radnje nisu odvojene od unosa novog događaja.**
+- **Brzih radnji nema.** Postoje samo **kategorije** i **nazivi**.
+- Kategorija = **sličica + riječ** (boja se dodjeljuje sama). Kategorije se smiju izmisliti.
+- Kad se odabere kategorija, nudi se **nekoliko naziva** (ranije korišteni s tom kategorijom).
+- **Opis** korisnik tipka sam, svaki put. Ništa se ne predlaže.
+- Kategorije nisu odvojene od unosa novog događaja.
 - Stvaranje kategorija u početku ne skrivati, svaka je **jedan dodir** daleko.
 
 ## Unos

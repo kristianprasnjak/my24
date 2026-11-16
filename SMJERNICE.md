@@ -36,6 +36,10 @@ prije svakog prijedloga ili mockupa provjeriti da ga ništa ovdje ne krši.
 - Skočne prozore koristiti pravilno i pravovremeno.
 - **Povijest kao izvor prijedloga:** isto vrijeme jučer, prije tjedan dana i prije 2 tjedna.
 - **Spavanje se najčešće podrazumijeva**, a pitanja o njemu mogu biti vrlo konkretna.
+- **Jutro:** pita kad sam se probudio i kad sam zaspao. Ako sam zaspao kasnije nego što je završila
+  zadnja aktivnost (npr. 23:45, a zadnja do 22:00), pita što sam radio u toj rupi.
+- **Ništa od toga nije čisti tekst.** Pitanja se postavljaju vizualno: redovi lanca dana, uokvireno
+  aktivno polje, isprekidana rupa s trajanjem, kotačić, pločice.
 
 ## Vrijeme
 - **Jako oprezno s nuđenjem vremena.** Nikakvi automatski pomaci „−5 / −15 / −30 min”.

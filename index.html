@@ -148,9 +148,12 @@ input,textarea{font:inherit;color:inherit}
 .run.idle .run-ico{background:transparent;border:1.5px dashed var(--text-3)}
 .sh-hd h2{display:flex;align-items:center;gap:8px}
 .sh-hd h2 span{overflow:hidden;text-overflow:ellipsis}
+.sh-hd h2 .back{font-size:22px;font-weight:400;color:var(--text-2);margin-right:2px;cursor:pointer}
 .one{display:grid}
-.seg.days{grid-template-columns:1fr 1fr 1fr}
-.seg.days button{height:32px;font-size:13px}
+.wcol.wd{flex:1.5}
+.wcol.wd .it{font-family:var(--font);font-size:15px;font-weight:500}
+.wcol.wd .it.n1{font-size:17px}
+.wcol.wd .it.on{font-size:21px;font-weight:700}
 .row .od{color:var(--text-2);flex:none}
 .hole{
   display:flex;align-items:center;gap:9px;height:44px;padding:0 10px;flex:none;width:100%;text-align:left;
@@ -326,7 +329,7 @@ input,textarea{font:inherit;color:inherit}
 
 /* ---------- toast ---------- */
 .toast{
-  position:fixed;left:50%;bottom:calc(84px + var(--safe-b));z-index:400;transform:translate(-50%,24px);opacity:0;pointer-events:none;
+  position:fixed;left:50%;top:calc(10px + var(--safe-t));z-index:400;transform:translate(-50%,-24px);opacity:0;pointer-events:none;
   width:calc(100% - 32px);max-width:420px;background:var(--text);color:var(--bg);border-radius:3px;
   padding:10px 10px 10px 14px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;
   transition:transform .3s cubic-bezier(.22,1,.36,1),opacity .2s;
@@ -375,8 +378,7 @@ input,textarea{font:inherit;color:inherit}
   <div class="sh-hd"><span id="x-bar" class="bar" style="height:22px"></span><h2 id="x-title"></h2><button class="x" data-close aria-label="Zatvori">✕</button></div>
   <div class="sh-bd">
     <div id="x-fields"></div>
-    <div class="seg days" id="x-days"><button data-d="-1">Jučer</button><button data-d="0">Danas</button><button data-d="1">Sutra</button></div>
-    <div class="wheel"><div class="wcol" id="w-h"></div><div class="wcol" id="w-m"></div></div>
+    <div class="wheel"><div class="wcol wd" id="w-d"></div><div class="wcol" id="w-h"></div><div class="wcol" id="w-m"></div></div>
     <div class="wanch" id="w-anch"></div>
     <div id="x-body" style="display:flex;flex-direction:column;gap:12px"></div>
   </div>
@@ -418,7 +420,7 @@ input,textarea{font:inherit;color:inherit}
    Prijedlozi su obična pravila nad poviješću (jučer, prije 7 i 14 dana). Bez AI-a.
    ============================================================ */
 const MIN = 60000, HOUR = 3600000, DAY = 86400000;
-const TRAIL_MIN = 2;           // od koliko minuta se prazno do sad prikazuje kao rupa
+const TRAIL_MIN = 0;           // nekategorizirano do sad prikazuje se odmah
 const STALE = 18 * 3600000;    // stariji kraj/početak od ovoga više nije "sad" (dugo nekorišteno)
 const CHAIN_WIN = 12 * 3600000; // lanac pokazuje samo zadnjih 12 h
 const CHAIN_MAX = 3;           // i najviše 3 unosa
@@ -435,6 +437,11 @@ const nowMs = () => floorMin(Date.now());
 function dur(ms) {
   const m = Math.max(0, Math.round(ms / MIN)), h = Math.floor(m / 60), r = m % 60;
   return h ? h + ':' + p2(r) : r + ' min';
+}
+function durRel(ms) {
+  const m = Math.max(0, Math.round(ms / MIN)), h = Math.floor(m / 60);
+  if (h >= 24) return Math.floor(h / 24) + ' d ' + (h % 24) + ' h';
+  return h ? h + ':' + p2(m % 60) : m + ' min';
 }
 function durLong(ms) {
   const m = Math.max(0, Math.round(ms / MIN)), h = Math.floor(m / 60), r = m % 60;
@@ -836,16 +843,16 @@ function startAt(catId, title, note, t) {
   else toast(NOCAT + ' od ' + hm(t), { undo: true });
 }
 /* Popuni prazno [a, b] od trenutka t. */
-function fillGap(a, b, t, catId, title) {
+function fillGap(a, b, t, catId, title, note) {
   snap();
   const n = nowMs();
-  const rec = { id: uid(), catId, title: title || '', note: '', s: t, e: b >= n && !logs.some(l => l.s >= b) ? null : b };
+  const rec = { id: uid(), catId, title: title || '', note: note || '', s: t, e: b >= n && !logs.some(l => l.s >= b) ? null : b };
   logs.push(rec); normalize(); save(); renderAll(); toastEntry(rec);
 }
 /* Podijeli: od t unutar bloka počinje nešto drugo (ili Prazno). */
-function splitAt(l, t, catId) {
+function splitAt(l, t, catId, title, note) {
   snap();
-  const rec = catId ? { id: uid(), catId, title: '', note: '', s: t, e: l.e } : null;
+  const rec = catId ? { id: uid(), catId, title: title || '', note: note || '', s: t, e: l.e } : null;
   l.e = t;
   if (rec) logs.push(rec);
   normalize(); save(); renderAll();
@@ -871,7 +878,7 @@ function setTime(id, field, ms) {
 }
 function toastEntry(l) {
   const n = nowMs();
-  toast(label(l) + '  ' + (dayOff(l.s) === 1 ? 'sutra ' : '') + hm(l.s) + (l.s > n ? ' · za ' + dur(l.s - n) : ''), { undo: true, edit: l.id });
+  toast(label(l) + '  ' + (dayOff(l.s) ? dLabel(dayOff(l.s)) + ' ' : '') + hm(l.s) + (l.s > n ? ' · za ' + durRel(l.s - n) : ''), { undo: true, edit: l.id });
 }
 
 /* ============================================================
@@ -902,7 +909,7 @@ function planHtml(l) {
   const c = catOf(l.catId);
   return '<button class="row plan" data-id="' + l.id + '"><span class="tm">' + hm(l.s) + '</span>' +
     '<span class="pv">' + SVG_PLAY + '</span>' + catMark(c, 17) +
-    '<span class="nm">' + esc(label(l)) + '</span><span class="za">' + (dayOff(l.s) === 1 ? 'sutra · ' : dayOff(l.s) > 1 ? new Date(l.s).getDate() + '.' + (new Date(l.s).getMonth() + 1) + '. · ' : '') + 'za ' + dur(l.s - nowMs()) + '</span></button>';
+    '<span class="nm">' + esc(label(l)) + '</span><span class="za">' + (dayOff(l.s) ? dLabel(dayOff(l.s)) + ' · ' : '') + 'za ' + durRel(l.s - nowMs()) + '</span></button>';
 }
 function bindRows(host) {
   host.querySelectorAll('.row[data-id]').forEach(b => b.onclick = () => openEdit(b.dataset.id));
@@ -993,9 +1000,37 @@ function renderToday() { renderSub(); renderChain(); renderHero(); renderTiles()
    ============================================================ */
 const IH = 56;
 let X = null;   // { mode:'start'|'next'|'edit'|'gap'|'split', ... , v, touched, sync }
+const D0 = -60, DN = 181;     // datumi: 60 dana unatrag do 120 dana unaprijed
+function dLabel(off) {
+  if (off === -1) return 'jučer';
+  if (off === 0) return 'danas';
+  if (off === 1) return 'sutra';
+  const d = new Date(dayStart(nowMs())); d.setDate(d.getDate() + off);
+  return DAYS_S[d.getDay()] + ' ' + d.getDate() + '.' + (d.getMonth() + 1) + '.';
+}
+function buildDates() {
+  let h = '<div class="pad"></div>';
+  for (let i = 0; i < DN; i++) h += '<div class="it" data-i="' + i + '">' + dLabel(i + D0) + '</div>';
+  $('w-d').innerHTML = h + '<div class="pad"></div>';
+}
+function setDateCol(off) {
+  const col = $('w-d'), i = Math.max(0, Math.min(DN - 1, off - D0));
+  X.syncD = true; col.scrollTop = i * IH; paintCol(col, i);
+  clearTimeout(X.std); X.std = setTimeout(() => { if (X) X.syncD = false; }, 250);
+}
 function buildWheel() {
   const mk = (n, id) => { let h = '<div class="pad"></div>'; for (let i = 0; i < n; i++) h += '<div class="it" data-i="' + i + '">' + p2(i) + '</div>'; $(id).innerHTML = h + '<div class="pad"></div>'; };
-  mk(24, 'w-h'); mk(60, 'w-m');
+  mk(24, 'w-h'); mk(60, 'w-m'); buildDates();
+  const dcol = $('w-d'); let rafd = null;
+  dcol.addEventListener('scroll', () => {
+    if (rafd) return;
+    rafd = requestAnimationFrame(() => {
+      rafd = null;
+      const i = Math.max(0, Math.min(DN - 1, Math.round(dcol.scrollTop / IH)));
+      paintCol(dcol, i);
+      if (X && !X.sync && !X.syncD) { X.dOff = i + D0; X.touched = true; paintFields(); }
+    });
+  }, { passive: true });
   const onScroll = (col, n) => {
     let raf = null;
     col.addEventListener('scroll', () => {
@@ -1004,7 +1039,7 @@ function buildWheel() {
         raf = null;
         const i = Math.max(0, Math.min(n - 1, Math.round(col.scrollTop / IH)));
         paintCol(col, i);
-        if (X && !X.sync) { const d = new Date(X.v); if (n === 24) d.setHours(i); else d.setMinutes(i); X.v = +d; X.touched = true; paintFields(); }
+        if (X && !X.sync) { const d = new Date(X.v); if (n === 24) d.setHours(i); else d.setMinutes(i); X.v = +d; X.touched = true; paintFields(); if (X.dOff === null || X.dOff === undefined) setDateCol(dayOff(resolvedV())); }
       });
     }, { passive: true });
   };
@@ -1019,6 +1054,7 @@ function syncWheel() {
   const d = new Date(X.v), h = $('w-h'), m = $('w-m');
   h.scrollTop = d.getHours() * IH; m.scrollTop = d.getMinutes() * IH;
   paintCol(h, d.getHours()); paintCol(m, d.getMinutes());
+  setDateCol(X.dOff === null || X.dOff === undefined ? dayOff(resolvedV()) : X.dOff);
   paintFields();
   clearTimeout(X.st); X.st = setTimeout(() => { if (X) X.sync = false; }, 250);
 }
@@ -1030,16 +1066,16 @@ const entryOf = () => X && X.id ? logs.find(l => l.id === X.id) : null;
 /* Odabrano na kotačiću -> stvarni trenutak. */
 function resolvedV() {
   const d = new Date(X.v), H = d.getHours(), M = d.getMinutes(), n = nowMs();
-  if (X.mode === 'start' || X.mode === 'next') {
-    const b = boundsNew();
-    if (X.day === null || X.day === undefined) return resolveHM(H, M, b.lo, b.hi, n);
-    const c = new Date(dayStart(n)); c.setDate(c.getDate() + X.day); c.setHours(H, M, 0, 0);
-    return Math.max(b.lo, +c);
+  let lo, hi, prefer;
+  if (X.mode === 'start' || X.mode === 'next') { const b = boundsNew(); lo = b.lo; hi = X.dOff != null ? Infinity : b.hi; prefer = n; }
+  else if (X.mode === 'gap') { lo = X.gap.a; hi = Math.max(X.gap.a, X.gap.b - MIN); prefer = X.gap.a; }
+  else if (X.mode === 'split') { const l = logs.find(x => x.id === X.splitId); lo = l.s + MIN; hi = l.e === null ? (l._ns ? l._ns - MIN : n + 120 * DAY) : l.e - MIN; prefer = X.v; }
+  else { const l = entryOf(), b = X.field === 's' ? boundsStart(l) : boundsEnd(l); lo = b.lo; hi = b.hi; prefer = b.prefer; }
+  if (X.dOff != null) {
+    const c = new Date(dayStart(n)); c.setDate(c.getDate() + X.dOff); c.setHours(H, M, 0, 0);
+    return Math.max(lo, Math.min(hi, +c));
   }
-  if (X.mode === 'gap') return resolveHM(H, M, X.gap.a, Math.max(X.gap.a, X.gap.b - MIN), X.gap.a);
-  if (X.mode === 'split') { const l = logs.find(x => x.id === X.splitId); return resolveHM(H, M, l.s + MIN, l.e === null ? n + 16 * HOUR : l.e - MIN, X.v); }
-  const l = entryOf(), b = X.field === 's' ? boundsStart(l) : boundsEnd(l);
-  return resolveHM(H, M, b.lo, b.hi, b.prefer);
+  return resolveHM(H, M, lo, hi, prefer);
 }
 function fieldName(f) {
   if (X.mode === 'edit') return f === 's' ? 'POČETAK' : 'KRAJ';
@@ -1057,26 +1093,21 @@ function paintFields() {
   const n = nowMs();
   $('x-fields').className = fs.length === 2 ? 'two' : 'one';
   $('x-fields').innerHTML = fs.map(([f, v]) => {
-    const rv = resolvedVFor(v), dd = dayOff(rv);
-    const rel = (X.mode === 'start' || X.mode === 'next') ? ((dd ? (DAYW[dd] || '') + ' · ' : '') + (Math.abs(rv - n) < MIN ? 'sad' : rv > n ? 'za ' + dur(rv - n) : 'prije ' + dur(n - rv))) : '';
+    const rv = X.field === f ? resolvedV() : v, dd = dayOff(rv);
+    const rel = (dd ? dLabel(dd) : '') + ((X.mode === 'start' || X.mode === 'next') ? ((dd ? ' · ' : '') + (Math.abs(rv - n) < MIN ? 'sad' : rv > n ? 'za ' + durRel(rv - n) : 'prije ' + durRel(n - rv))) : '');
     return '<button class="tbtn' + (X.field === f ? ' on' : '') + '" data-f="' + f + '"><span>' + fieldName(f) + (rel ? ' · ' + rel : '') + '</span><b>' + hm(v) + '</b></button>';
   }).join('');
   $('x-fields').querySelectorAll('[data-f]').forEach(b => b.onclick = () => {
     if (b.dataset.f === X.field) return;
     applyEdit();
     const e = entryOf();
-    X.field = b.dataset.f; X.v = X.field === 's' ? e.s : endOf(e); X.touched = false;
+    X.field = b.dataset.f; X.v = X.field === 's' ? e.s : endOf(e); X.touched = false; X.dOff = null;
     renderSheet(); syncWheel();
   });
-  if (X.mode === 'start' || X.mode === 'next') {
-    const dd = dayOff(resolvedV());
-    $('x-days').classList.remove('hide');
-    $('x-days').querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.d === dd));
-  } else $('x-days').classList.add('hide');
-  if (X.mode === 'start') { const rv = resolvedV(), dd = dayOff(rv); $('x-go').innerHTML = SVG_PLAY + '<span>' + (rv > n + MIN ? 'Počinje ' + (dd === 1 ? 'sutra ' : '') + 'u ' : 'Počni u ') + hm(rv) + '</span>'; }
+  if (X.mode === 'start' || X.mode === 'next') { const rv = resolvedV(), dd = dayOff(rv); $('x-go').innerHTML = SVG_PLAY + '<span>' + (rv > n + MIN ? 'Počinje ' + (dd ? dLabel(dd) + ' ' : '') + 'u ' : 'Počni u ') + hm(rv) + '</span>'; }
+  else if (X.mode === 'gap' || X.mode === 'split') { const rv = resolvedV(), dd = dayOff(rv); $('x-go').innerHTML = '<span>✓ Spremi od ' + (dd ? dLabel(dd) + ' ' : '') + hm(rv) + '</span>'; }
 }
 function dayOff(t) { return Math.round((dayStart(t) - dayStart(nowMs())) / DAY); }
-const DAYW = { '-1': 'jučer', '0': 'danas', '1': 'sutra' };
 function resolvedVFor(v) { const keep = X.v; X.v = v; const r = resolvedV(); X.v = keep; return r; }
 function applyEdit() {
   if (!X || X.mode !== 'edit' || !X.touched) return;
@@ -1116,7 +1147,7 @@ function renderAnchors() {
   const an = anchorsFor();
   $('w-anch').innerHTML = an.map(a => '<button data-t="' + a.t + '"><b>' + hm(a.t) + '</b><span>' + esc(a.l) + '</span></button>').join('');
   $('w-anch').classList.toggle('hide', !an.length);
-  $('w-anch').querySelectorAll('button').forEach(b => b.onclick = () => { X.v = +b.dataset.t; X.touched = true; syncWheel(); });
+  $('w-anch').querySelectorAll('button').forEach(b => b.onclick = () => { X.v = +b.dataset.t; X.dOff = dayOff(X.v); X.touched = true; syncWheel(); });
 }
 function namesHtml(catId, cur) {
   const names = namesFor(catId); if (cur && names.indexOf(cur) < 0) names.unshift(cur);
@@ -1143,6 +1174,7 @@ function openSplit(id) {
   showSheet();
 }
 function showSheet() {
+  buildDates();
   renderSheet();
   if (!$('sh-entry').classList.contains('on')) openSheet('sh-entry');
   requestAnimationFrame(syncWheel);
@@ -1159,11 +1191,14 @@ function renderSheet() {
   };
   ['x-del', 'x-split', 'x-ok', 'x-go'].forEach(id => $(id).classList.add('hide'));
   $('x-ft').classList.remove('hide');
+  $('x-title').onclick = null;
 
-  if (X.mode === 'start') {
+  const confirm = X.mode === 'start' || ((X.mode === 'next' || X.mode === 'gap' || X.mode === 'split') && X.catId);
+  if (confirm) {
     const c = catOf(X.catId);
     $('x-bar').style.background = c.color;
-    $('x-title').innerHTML = catMark(c, 20) + '<span>' + esc(c.name) + '</span>';
+    $('x-title').innerHTML = (X.mode !== 'start' ? '<span class="back" aria-hidden="true">‹</span>' : '') + catMark(c, 20) + '<span>' + esc(c.name) + '</span>';
+    $('x-title').onclick = X.mode !== 'start' ? () => { X.catId = undefined; renderSheet(); } : null;
     body.innerHTML = namesHtml(X.catId, X.title) + '<input class="inp" id="x-note" type="text" autocomplete="off" placeholder="opis" aria-label="Opis">';
     $('x-note').value = X.note; $('x-note').oninput = e => { X.note = e.target.value; };
     bindNames(() => X.title, v => { X.title = v; });
@@ -1175,12 +1210,17 @@ function renderSheet() {
     else { const l = logs.find(x => x.id === X.splitId); title = 'Podijeli · ' + label(l); $('x-bar').style.background = catOf(l.catId).color; }
     $('x-title').textContent = title;
     body.innerHTML = '<div class="tiles">' + tilesHtml(liveCats(), hi, withEmpty) + '</div>';
+    $('x-title').onclick = null;
     body.querySelectorAll('[data-c]').forEach(b => b.onclick = () => {
-      const t = resolvedV(), o = X, cid = b.dataset.c;
-      closeSheet('sh-entry');
-      if (o.mode === 'next') startAt(cid, '', '', t);
-      else if (o.mode === 'gap') { const g = guessFor(o.gap.a, o.gap.b); fillGap(o.gap.a, o.gap.b, t, cid, g && g.catId === cid ? g.title : ''); }
-      else splitAt(logs.find(x => x.id === o.splitId), t, cid);
+      const cid = b.dataset.c;
+      if (!cid) {                                   // Nekategorizirano: nema što birati
+        const t = resolvedV(), o = X; closeSheet('sh-entry');
+        if (o.mode === 'next') startAt('', '', '', t); else splitAt(logs.find(x => x.id === o.splitId), t, '');
+        return;
+      }
+      const g = X.mode === 'gap' ? guessFor(X.gap.a, X.gap.b) : null;
+      X.catId = cid; X.title = g && g.catId === cid ? g.title : ''; X.note = '';
+      renderSheet();
     });
     $('x-ft').classList.add('hide');
   } else {
@@ -1204,8 +1244,13 @@ function renderSheet() {
   renderAnchors();
 }
 $('x-ok').onclick = () => closeSheet('sh-entry');
-$('x-days').querySelectorAll('button').forEach(b => b.onclick = () => { if (!X) return; X.day = +b.dataset.d; X.touched = true; paintFields(); });
-$('x-go').onclick = () => { const o = X, t = resolvedV(); X = null; closeSheet('sh-entry'); startAt(o.catId, o.title, o.note, t); };
+
+$('x-go').onclick = () => {
+  const o = X, t = resolvedV(); X = null; closeSheet('sh-entry');
+  if (o.mode === 'gap') fillGap(o.gap.a, o.gap.b, t, o.catId, o.title, o.note);
+  else if (o.mode === 'split') splitAt(logs.find(x => x.id === o.splitId), t, o.catId, o.title, o.note);
+  else startAt(o.catId, o.title, o.note, t);
+};
 $('x-del').onclick = () => { const l = entryOf(); if (!l) return; X.touched = false; closeSheet('sh-entry'); removeEntry(l); };
 $('x-split').onclick = () => { const l = entryOf(); if (!l) return; applyEdit(); openSplit(l.id); };
 
@@ -1228,7 +1273,7 @@ function renderKal() {
     cur = Math.max(cur, Math.min(endOf(l), d1));
   });
   if (items.length && lim - cur >= MIN) h += gapHtml(cur, lim);
-  if (!items.length) h = '<div class="kal-empty">Nema unosa.</div>';
+  if (!items.length) h = d0 < n ? gapHtml(d0, lim) : '<div class="kal-empty">Nema unosa.</div>';
   $('kal-list').innerHTML = h;
   bindRows($('kal-list'));
 }

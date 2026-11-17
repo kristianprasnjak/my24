@@ -97,5 +97,6 @@ prije svakog prijedloga ili mockupa provjeriti da ga ništa ovdje ne krši.
 - **Dodir na kategoriju ne pokreće odmah.** Otvara list te kategorije: nazivi, početak (zadano sad),
   opis i tipka **▶ Počni**.
 - **Završi nije dovoljan sam za sebe:** u tom trenutku mora nešto novo početi, pa Završi otvara „Što sad?”.
-- **Prazno vrijeme ružno izgleda i komplicira.** Nema crvenih rupa. Ono što nije upisano je kategorija
-  **Prazno**, koja se nudi i kao izbor.
+- **Prazno vrijeme ružno izgleda i komplicira.** Nema crvenih rupa. Ono što nije upisano je
+  **Nekategorizirano** (naziv ovisi o jeziku; korisnik govori hrvatski), i nudi se kao izbor.
+- Mora se moći postaviti događaj koji počinje **sutra** (i više planova odjednom).

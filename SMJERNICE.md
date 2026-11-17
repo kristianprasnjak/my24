@@ -67,6 +67,7 @@ prije svakog prijedloga ili mockupa provjeriti da ga ništa ovdje ne krši.
   u sredini, susjedne blijede iznad i ispod, korak 1 minuta.
 
 ## Način rada
+- **Pull requestove otvara i spaja Claude**, korisnik to ne želi raditi.
 - Prije prijedloga **proučiti aplikaciju i isprobati je** na vlastitoj koži.
 - Misliti, a ne podilaziti. Reći kad se ne slažem i zašto.
 
@@ -99,4 +100,5 @@ prije svakog prijedloga ili mockupa provjeriti da ga ništa ovdje ne krši.
 - **Završi nije dovoljan sam za sebe:** u tom trenutku mora nešto novo početi, pa Završi otvara „Što sad?”.
 - **Prazno vrijeme ružno izgleda i komplicira.** Nema crvenih rupa. Ono što nije upisano je
   **Nekategorizirano** (naziv ovisi o jeziku; korisnik govori hrvatski), i nudi se kao izbor.
-- Mora se moći postaviti događaj koji počinje **sutra** (i više planova odjednom).
+- Mora se moći postaviti događaj koji počinje **sutra ili bilo kojeg točnog datuma** (i više planova odjednom).
+- **Dodir na kategoriju nikad ne sprema odmah**, ni u „Što sad?”, ni kod popune ili podjele.

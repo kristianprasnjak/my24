@@ -92,3 +92,10 @@ prije svakog prijedloga ili mockupa provjeriti da ga ništa ovdje ne krši.
 - Stari događaji nakon nekog vremena postaju nebitni i ne prikazuju se. Na glavnom ekranu je vidljivo
   vrlo malo događaja.
 - Mora se moći **unaprijed postaviti događaj** koji počinje kasnije (npr. spavanje u 23:45, a sad je 23:23).
+
+## Niz početaka, bez praznina (dogovoreno)
+- **Dodir na kategoriju ne pokreće odmah.** Otvara list te kategorije: nazivi, početak (zadano sad),
+  opis i tipka **▶ Počni**.
+- **Završi nije dovoljan sam za sebe:** u tom trenutku mora nešto novo početi, pa Završi otvara „Što sad?”.
+- **Prazno vrijeme ružno izgleda i komplicira.** Nema crvenih rupa. Ono što nije upisano je kategorija
+  **Prazno**, koja se nudi i kao izbor.

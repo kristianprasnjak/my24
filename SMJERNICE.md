@@ -26,6 +26,15 @@ prije svakog prijedloga ili mockupa provjeriti da ga ništa ovdje ne krši.
 - Kategorije nisu odvojene od unosa novog događaja.
 - Stvaranje kategorija u početku ne skrivati, svaka je **jedan dodir** daleko.
 
+## Cilj
+- **15 puta po 5 sekundi dnevno** je normalna i učinkovita upotreba.
+- **Svaka minuta mora biti unesena**, a ljudi nemaju vremena trošiti ga na aplikaciju.
+- Navika unosa gradi se **pri kraju aktivnosti**, a usput se brzo stavi i ono što je upravo počelo.
+- Aplikacija je **uvijek sugestivna**, ali jednako brzo dopušta i nešto drugo od onoga što misli.
+- **Na prvi pogled se vidi sve za najbrži unos**, a ne kalendar.
+- Trenutni dizajn aplikacije je **uzor u vizualnom smislu**.
+- Tipke play/stop (▶ ■): odabir i izvedba prepušteni dizajnu.
+
 ## Unos
 - Ljudi žive brzo: nema ulaženja u aplikaciju i tipkanja nakon svake aktivnosti.
 - **Izbjegavati tipkanje i pretragu.**

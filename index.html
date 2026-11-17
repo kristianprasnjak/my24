@@ -140,7 +140,7 @@ input,textarea{font:inherit;color:inherit}
 .tbtn.on{border:2px solid var(--text);background:var(--surface)}
 .row.gap .bar{background:transparent;border-left:2px dashed var(--text-3);width:0}
 .row.gap .nm{color:var(--text-3);font-weight:500}
-.tile.empty{border-style:dashed;background:transparent;color:var(--text-2)}
+.tile.empty{border-style:dashed;background:transparent;color:var(--text-2);grid-column:1/-1;justify-content:center}
 .tile.empty .bar{background:transparent}
 .run.idle{background:var(--surface-2);color:var(--text-2);border:1px dashed var(--text-3);width:100%;text-align:left}
 .run.idle::after{display:none}
@@ -149,6 +149,8 @@ input,textarea{font:inherit;color:inherit}
 .sh-hd h2{display:flex;align-items:center;gap:8px}
 .sh-hd h2 span{overflow:hidden;text-overflow:ellipsis}
 .one{display:grid}
+.seg.days{grid-template-columns:1fr 1fr 1fr}
+.seg.days button{height:32px;font-size:13px}
 .row .od{color:var(--text-2);flex:none}
 .hole{
   display:flex;align-items:center;gap:9px;height:44px;padding:0 10px;flex:none;width:100%;text-align:left;
@@ -373,6 +375,7 @@ input,textarea{font:inherit;color:inherit}
   <div class="sh-hd"><span id="x-bar" class="bar" style="height:22px"></span><h2 id="x-title"></h2><button class="x" data-close aria-label="Zatvori">✕</button></div>
   <div class="sh-bd">
     <div id="x-fields"></div>
+    <div class="seg days" id="x-days"><button data-d="-1">Jučer</button><button data-d="0">Danas</button><button data-d="1">Sutra</button></div>
     <div class="wheel"><div class="wcol" id="w-h"></div><div class="wcol" id="w-m"></div></div>
     <div class="wanch" id="w-anch"></div>
     <div id="x-body" style="display:flex;flex-direction:column;gap:12px"></div>
@@ -621,15 +624,18 @@ function save() {
 /* Red po početku; samo zadnji unos smije biti otvoren; ništa se ne preklapa. */
 function normalize() {
   logs.sort((a, b) => a.s - b.s);
+  const now = nowMs();
   for (let i = 0; i < logs.length; i++) {
     const l = logs[i], n = logs[i + 1];
-    if (n && (l.e === null || l.e > n.s)) l.e = Math.max(l.s, n.s);
+    if (!n) continue;
+    if (l.e === null ? n.s <= now : l.e > n.s) l.e = Math.max(l.s, n.s);
   }
   logs = logs.filter(l => l.e === null || l.e > l.s);
-  const last = logs[logs.length - 1];
-  if (last && last.e === null && Date.now() - last.s > STALE) {
-    const td = typicalDur(last);
-    last.e = last.s + Math.min(td || HOUR, 16 * HOUR);
+  logs.forEach((l, i) => { l._ns = logs[i + 1] ? logs[i + 1].s : null; });
+  const open = logs.find(l => l.e === null && l.s <= now);
+  if (open && now - open.s > STALE) {
+    const td = typicalDur(open);
+    open.e = open.s + Math.min(td || HOUR, 16 * HOUR);
   }
 }
 const catOf = id => cats.find(c => c.id === id) || { id: '', name: 'Bez kategorije', icon: '', emoji: '', color: '#93958F' };
@@ -637,9 +643,13 @@ const liveCats = () => cats.filter(c => c.name.trim());
 const label = l => { const c = catOf(l.catId); return l.title ? c.name + ' · ' + l.title : c.name; };
 /* Planirani unos počinje u budućnosti. Ono što traje može imati kraj u budućnosti
    (završit će kad počne planirano). */
-const endOf = l => l.e === null ? Math.max(nowMs(), l.s) : l.e;
+const endOf = l => l.e === null ? Math.min(Math.max(nowMs(), l.s), l._ns === null || l._ns === undefined ? Infinity : l._ns) : l.e;
 const pastLast = () => { const n = nowMs(); for (let i = logs.length - 1; i >= 0; i--) if (logs[i].s <= n) return logs[i]; return null; };
-const running = () => { const l = pastLast(), n = nowMs(); return l && (l.e === null || l.e > n) ? l : null; };
+const running = () => {
+  const l = pastLast(), n = nowMs();
+  if (!l) return null;
+  return (l.e === null ? (l._ns === null || l._ns === undefined || l._ns > n) : l.e > n) ? l : null;
+};
 const plannedList = () => { const n = nowMs(); return logs.filter(l => l.s > n); };
 const lastLog = pastLast;
 
@@ -654,7 +664,7 @@ function undo() {
   if (!s) return;
   const d = JSON.parse(s);
   logs = d.logs; cats = d.cats;
-  save(); renderAll();
+  normalize(); save(); renderAll();
 }
 
 /* ============================================================
@@ -766,7 +776,7 @@ const isSleep = c => c && c.icon === 'sleep';
    UI STANJE
    ============================================================ */
 const ui = { tab: 'today', kalDay: ymd(new Date()) };
-const EMPTY = { id: '', name: 'Prazno', icon: '', emoji: '', color: 'transparent' };
+const NOCAT = 'Nekategorizirano';
 
 /* ============================================================
    VRIJEME S KOTAČIĆA
@@ -785,8 +795,8 @@ function boundsStart(l) {
   const i = logs.indexOf(l), prev = logs[i - 1], n = nowMs();
   const linked = prev && prev.e !== null && prev.e === l.s;
   const lo = prev ? (prev.e === null || linked ? prev.s + MIN : prev.e) : l.s - 2 * DAY;
-  const open = l.e === null && i === logs.length - 1;
-  return { lo, hi: open ? n + 16 * HOUR : (l.e === null ? n : l.e) - MIN, prefer: l.s };
+  const hi = l.e === null ? (l._ns ? l._ns - MIN : n + 3 * DAY) : l.e - MIN;
+  return { lo, hi, prefer: l.s };
 }
 function boundsEnd(l) {
   const i = logs.indexOf(l), next = logs[i + 1];
@@ -816,14 +826,14 @@ function startAt(catId, title, note, t) {
   const n = nowMs(), run = running();
   if (run) {
     if (t - run.s < MIN) logs.splice(logs.indexOf(run), 1);   // zamjena u istoj minuti
-    else run.e = t;
+    else if (t <= n) run.e = t;          // plan ne dira ono što traje: ono traje do plana
   }
-  if (t > n) plannedList().forEach(p => logs.splice(logs.indexOf(p), 1));   // novi plan zamjenjuje stari
+  plannedList().forEach(p => { if (p.s === t) logs.splice(logs.indexOf(p), 1); });   // isti trenutak: zamjena
   let rec = null;
   if (catId) { rec = { id: uid(), catId, title: title || '', note: note || '', s: t, e: null }; logs.push(rec); }
   normalize(); save(); renderAll();
   if (rec) toastEntry(rec);
-  else toast('Prazno od ' + hm(t), { undo: true });
+  else toast(NOCAT + ' od ' + hm(t), { undo: true });
 }
 /* Popuni prazno [a, b] od trenutka t. */
 function fillGap(a, b, t, catId, title) {
@@ -839,12 +849,12 @@ function splitAt(l, t, catId) {
   l.e = t;
   if (rec) logs.push(rec);
   normalize(); save(); renderAll();
-  if (rec) toastEntry(rec); else toast('Prazno od ' + hm(t), { undo: true });
+  if (rec) toastEntry(rec); else toast(NOCAT + ' od ' + hm(t), { undo: true });
 }
 function removeEntry(l) {
   snap();
   logs = logs.filter(x => x !== l);
-  save(); renderAll(); toast('Obrisano · ' + label(l), { undo: true });
+  normalize(); save(); renderAll(); toast('Obrisano · ' + label(l), { undo: true });
 }
 function setTime(id, field, ms) {
   const i = logs.findIndex(l => l.id === id); if (i < 0) return;
@@ -852,7 +862,7 @@ function setTime(id, field, ms) {
   if (field === 's') {
     const b = boundsStart(l), linked = prev && prev.e !== null && prev.e === l.s, old = l.s;
     l.s = Math.max(b.lo, Math.min(b.hi, ms));
-    if (linked && (l.s < old || l.s > n || l.s > old)) prev.e = l.s;   // spojeni prethodni prati početak (bez praznine)
+    if (linked) { if (l.s <= n) prev.e = l.s; else prev.e = null; }   // spojeni prethodni prati početak (bez praznine)
   } else {
     const b = boundsEnd(l), next = logs[i + 1], linked = next && next.s === l.e;
     l.e = Math.max(b.lo, Math.min(b.hi, ms));
@@ -861,7 +871,7 @@ function setTime(id, field, ms) {
 }
 function toastEntry(l) {
   const n = nowMs();
-  toast(label(l) + '  ' + hm(l.s) + (l.s > n ? ' · za ' + dur(l.s - n) : ''), { undo: true, edit: l.id });
+  toast(label(l) + '  ' + (dayOff(l.s) === 1 ? 'sutra ' : '') + hm(l.s) + (l.s > n ? ' · za ' + dur(l.s - n) : ''), { undo: true, edit: l.id });
 }
 
 /* ============================================================
@@ -875,7 +885,8 @@ function renderSub() {
     Math.floor(cov / HOUR) + ' h ' + p2(Math.floor(cov % HOUR / MIN)) + ' min';
 }
 function runTime(r) {
-  return 'od ' + hm(r.s) + ' · ' + clock(Date.now() - r.s) + (r.e !== null && r.e > nowMs() ? ' → ' + hm(r.e) : '');
+  const nx = r.e !== null && r.e > nowMs() ? r.e : (r._ns && r._ns - nowMs() <= 12 * HOUR ? r._ns : null);
+  return 'od ' + hm(r.s) + ' · ' + clock(Date.now() - r.s) + (nx ? ' → ' + hm(nx) : '');
 }
 function rowHtml(l) {
   const c = catOf(l.catId);
@@ -885,13 +896,13 @@ function rowHtml(l) {
 }
 function gapHtml(a, b) {
   return '<button class="row gap" data-a="' + a + '" data-b="' + b + '"><span class="tm">' + hm(a) + '</span>' +
-    '<i class="bar"></i><span class="nm">Prazno</span></button>';
+    '<i class="bar"></i><span class="nm">' + NOCAT + '</span></button>';
 }
 function planHtml(l) {
   const c = catOf(l.catId);
   return '<button class="row plan" data-id="' + l.id + '"><span class="tm">' + hm(l.s) + '</span>' +
     '<span class="pv">' + SVG_PLAY + '</span>' + catMark(c, 17) +
-    '<span class="nm">' + esc(label(l)) + '</span><span class="za">za ' + dur(l.s - nowMs()) + '</span></button>';
+    '<span class="nm">' + esc(label(l)) + '</span><span class="za">' + (dayOff(l.s) === 1 ? 'sutra · ' : dayOff(l.s) > 1 ? new Date(l.s).getDate() + '.' + (new Date(l.s).getMonth() + 1) + '. · ' : '') + 'za ' + dur(l.s - nowMs()) + '</span></button>';
 }
 function bindRows(host) {
   host.querySelectorAll('.row[data-id]').forEach(b => b.onclick = () => openEdit(b.dataset.id));
@@ -916,7 +927,7 @@ function renderChain() {
       '<button class="run-body" id="run-body"><b>' + esc(label(run)) + '</b><span id="run-time">' + runTime(run) + '</span></button>' +
       '<button class="run-stop" id="run-stop">' + SVG_STOP + 'Završi</button></div>';
   } else if (trail) {
-    h += '<button class="run idle" id="idle"><span class="run-ico"></span><span class="run-body"><b>Prazno</b><span>od ' + hm(trail.a) + ' · ' + dur(trail.b - trail.a) + '</span></span></button>';
+    h += '<button class="run idle" id="idle"><span class="run-ico"></span><span class="run-body"><b>' + NOCAT + '</b><span>od ' + hm(trail.a) + ' · ' + dur(trail.b - trail.a) + '</span></span></button>';
   }
   plannedList().forEach(l => { h += planHtml(l); });
   if (!logs.length) h += '<div class="empty-hint">' + (liveCats().length ? 'Dodirni kategoriju kad nešto počne.' : 'Odaberi kategorije koje čine tvoj dan.') + '</div>';
@@ -948,7 +959,7 @@ function renderHero() {
 function tilesHtml(list, hi, withEmpty) {
   return list.map(c => '<button class="tile' + (hi === c.id ? ' hi' : '') + '" data-c="' + c.id + '"><i class="bar" style="background:' + c.color + '"></i>' +
     catMark(c, 18) + '<span class="n">' + esc(c.name) + '</span></button>').join('') +
-    (withEmpty ? '<button class="tile empty" data-c=""><i class="bar"></i><span class="n">Prazno</span></button>' : '');
+    (withEmpty ? '<button class="tile empty" data-c=""><i class="bar"></i><span class="n">' + NOCAT + '</span></button>' : '');
 }
 function renderTiles() {
   const host = $('tiles'), lc = liveCats();
@@ -1019,7 +1030,12 @@ const entryOf = () => X && X.id ? logs.find(l => l.id === X.id) : null;
 /* Odabrano na kotačiću -> stvarni trenutak. */
 function resolvedV() {
   const d = new Date(X.v), H = d.getHours(), M = d.getMinutes(), n = nowMs();
-  if (X.mode === 'start' || X.mode === 'next') { const b = boundsNew(); return resolveHM(H, M, b.lo, b.hi, n); }
+  if (X.mode === 'start' || X.mode === 'next') {
+    const b = boundsNew();
+    if (X.day === null || X.day === undefined) return resolveHM(H, M, b.lo, b.hi, n);
+    const c = new Date(dayStart(n)); c.setDate(c.getDate() + X.day); c.setHours(H, M, 0, 0);
+    return Math.max(b.lo, +c);
+  }
   if (X.mode === 'gap') return resolveHM(H, M, X.gap.a, Math.max(X.gap.a, X.gap.b - MIN), X.gap.a);
   if (X.mode === 'split') { const l = logs.find(x => x.id === X.splitId); return resolveHM(H, M, l.s + MIN, l.e === null ? n + 16 * HOUR : l.e - MIN, X.v); }
   const l = entryOf(), b = X.field === 's' ? boundsStart(l) : boundsEnd(l);
@@ -1041,7 +1057,8 @@ function paintFields() {
   const n = nowMs();
   $('x-fields').className = fs.length === 2 ? 'two' : 'one';
   $('x-fields').innerHTML = fs.map(([f, v]) => {
-    const rel = (X.mode === 'start' || X.mode === 'next') ? (Math.abs(resolvedVFor(v) - n) < MIN ? 'sad' : resolvedVFor(v) > n ? 'za ' + dur(resolvedVFor(v) - n) : 'prije ' + dur(n - resolvedVFor(v))) : '';
+    const rv = resolvedVFor(v), dd = dayOff(rv);
+    const rel = (X.mode === 'start' || X.mode === 'next') ? ((dd ? (DAYW[dd] || '') + ' · ' : '') + (Math.abs(rv - n) < MIN ? 'sad' : rv > n ? 'za ' + dur(rv - n) : 'prije ' + dur(n - rv))) : '';
     return '<button class="tbtn' + (X.field === f ? ' on' : '') + '" data-f="' + f + '"><span>' + fieldName(f) + (rel ? ' · ' + rel : '') + '</span><b>' + hm(v) + '</b></button>';
   }).join('');
   $('x-fields').querySelectorAll('[data-f]').forEach(b => b.onclick = () => {
@@ -1051,14 +1068,21 @@ function paintFields() {
     X.field = b.dataset.f; X.v = X.field === 's' ? e.s : endOf(e); X.touched = false;
     renderSheet(); syncWheel();
   });
-  if (X.mode === 'start') $('x-go').innerHTML = SVG_PLAY + '<span>' + (resolvedV() > n + MIN ? 'Počinje u ' : 'Počni u ') + hm(resolvedV()) + '</span>';
+  if (X.mode === 'start' || X.mode === 'next') {
+    const dd = dayOff(resolvedV());
+    $('x-days').classList.remove('hide');
+    $('x-days').querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.d === dd));
+  } else $('x-days').classList.add('hide');
+  if (X.mode === 'start') { const rv = resolvedV(), dd = dayOff(rv); $('x-go').innerHTML = SVG_PLAY + '<span>' + (rv > n + MIN ? 'Počinje ' + (dd === 1 ? 'sutra ' : '') + 'u ' : 'Počni u ') + hm(rv) + '</span>'; }
 }
+function dayOff(t) { return Math.round((dayStart(t) - dayStart(nowMs())) / DAY); }
+const DAYW = { '-1': 'jučer', '0': 'danas', '1': 'sutra' };
 function resolvedVFor(v) { const keep = X.v; X.v = v; const r = resolvedV(); X.v = keep; return r; }
 function applyEdit() {
   if (!X || X.mode !== 'edit' || !X.touched) return;
   const l = entryOf(); if (!l) return;
   const t = resolvedV(), cur = X.field === 's' ? l.s : l.e;
-  if (t !== cur) { if (!X.snapped) { snap(); X.snapped = true; } setTime(l.id, X.field, t); save(); }
+  if (t !== cur) { if (!X.snapped) { snap(); X.snapped = true; } setTime(l.id, X.field, t); normalize(); save(); }
   X.touched = false;
 }
 /* Ponuđena vremena: sad, isto vrijeme jučer / prošli tjedan, uobičajeni kraj onoga što traje. */
@@ -1180,6 +1204,7 @@ function renderSheet() {
   renderAnchors();
 }
 $('x-ok').onclick = () => closeSheet('sh-entry');
+$('x-days').querySelectorAll('button').forEach(b => b.onclick = () => { if (!X) return; X.day = +b.dataset.d; X.touched = true; paintFields(); });
 $('x-go').onclick = () => { const o = X, t = resolvedV(); X = null; closeSheet('sh-entry'); startAt(o.catId, o.title, o.note, t); };
 $('x-del').onclick = () => { const l = entryOf(); if (!l) return; X.touched = false; closeSheet('sh-entry'); removeEntry(l); };
 $('x-split').onclick = () => { const l = entryOf(); if (!l) return; applyEdit(); openSplit(l.id); };
@@ -1411,6 +1436,7 @@ setInterval(() => {
   const m = nowMs();
   if (m !== lastMinute) {
     lastMinute = m;
+    normalize();
     const busy = openSheets.length || document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName);
     if (!busy && !document.hidden) renderAll();
   }

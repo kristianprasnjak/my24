@@ -66,3 +66,16 @@ prije svakog prijedloga ili mockupa provjeriti da ga ništa ovdje ne krši.
 ## Način rada
 - Prije prijedloga **proučiti aplikaciju i isprobati je** na vlastitoj koži.
 - Misliti, a ne podilaziti. Reći kad se ne slažem i zašto.
+
+## Tok (dogovoreno)
+- **PRIORITET BR. 1: sve upute spojene u jedan glatki, brz i jednostavan tok.** Radije malo mogućnosti
+  nego da se osoba spotiče. Svaka opcija ima svoje mjesto, vidljivost i prioritet.
+- **▶ znači da nešto počinje sad.** Ako je prije toga ostala rupa, aplikacija **nakon toga** traži da se
+  popuni što je bilo u međuvremenu.
+- **■ znači da je nešto završilo.** Podrazumijeva se da je počelo kad je završila zadnja upisana
+  aktivnost, ali s 2–3 dodira mora se moći upisati da je počelo kasnije. Odmah potom se signalizira
+  da se popuni rupa koja je time nastala.
+- **Kako se „pita” je ključno pitanje dizajna** (svijetljenje, animacija, tekst, upitnik…).
+- Zadano je **jedan dodir na tipku s nazivom kategorije**. Jednako lako se upisuje **vlastiti naziv**
+  i po volji **opis**. Ako događaj ima opis, uz njega stoji **mala ikonica**.
+- Mora se moći ući u **kalendar**, a sve dogovoreno mora biti dostupno.

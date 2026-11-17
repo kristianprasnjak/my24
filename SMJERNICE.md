@@ -10,6 +10,9 @@ prije svakog prijedloga ili mockupa provjeriti da ga ništa ovdje ne krši.
 ## Vizualni stil
 - **Vizualni stil se ne mijenja**: postojeći tokeni (`--bg #F1F1EE`, `--surface`, `--line`…),
   kutovi 3–4 px, Archivo + IBM Plex Mono, postojeće ikone kategorija.
+- **Aplikacija mora izgledati jako jednostavno.** Sačuvati prednosti jednostavnog vizualnog stila.
+- **Većina tipki je crno-bijela.** Boja kategorije samo kao tanka crtica uz naziv
+  (iznimka: kartica onoga što trenutno traje, kao u postojećoj aplikaciji). Crvena samo za rupe i upozorenja.
 - **Kockaste tipke** su dobre, ali **ne ogromne**.
 - **Bez praznog prostora.** Svaki dio ekrana mora nešto nositi.
 - **Malo teksta.** Vremena i oblici umjesto rečenica. Tekst samo gdje je nužan.

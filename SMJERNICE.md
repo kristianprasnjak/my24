@@ -82,3 +82,13 @@ prije svakog prijedloga ili mockupa provjeriti da ga ništa ovdje ne krši.
 - Zadano je **jedan dodir na tipku s nazivom kategorije**. Jednako lako se upisuje **vlastiti naziv**
   i po volji **opis**. Ako događaj ima opis, uz njega stoji **mala ikonica**.
 - Mora se moći ući u **kalendar**, a sve dogovoreno mora biti dostupno.
+
+## Jednostavnost (dogovoreno)
+- **Izgubili smo jednostavnost i lakoću korištenja. Vratiti ih je prioritet.**
+- Na popisu se navodi **samo vrijeme početka**. Kraj se podrazumijeva: traje do početka sljedećeg.
+- Svaki događaj mora se moći **urediti i obrisati**.
+- Promjena se radi tako da se **unutar bloka postavi vrijeme kad je nešto drugo počelo**
+  (blok se dijeli na 2 ili više aktivnosti).
+- Stari događaji nakon nekog vremena postaju nebitni i ne prikazuju se. Na glavnom ekranu je vidljivo
+  vrlo malo događaja.
+- Mora se moći **unaprijed postaviti događaj** koji počinje kasnije (npr. spavanje u 23:45, a sad je 23:23).

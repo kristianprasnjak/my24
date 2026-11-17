@@ -408,6 +408,9 @@ input,textarea{font:inherit;color:inherit}
    ============================================================ */
 const MIN = 60000, HOUR = 3600000, DAY = 86400000;
 const TRAIL_MIN = 2;           // od koliko minuta se prazno do sad prikazuje kao rupa
+const STALE = 18 * 3600000;    // stariji kraj/početak od ovoga više nije "sad" (dugo nekorišteno)
+const CHAIN_WIN = 12 * 3600000; // lanac pokazuje samo zadnjih 12 h
+const CHAIN_MAX = 3;           // i najviše 3 unosa
 const $ = id => document.getElementById(id);
 const LS = {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -615,6 +618,11 @@ function normalize() {
     if (n && (l.e === null || l.e > n.s)) l.e = Math.max(l.s, n.s);
   }
   logs = logs.filter(l => l.e === null || l.e > l.s);
+  const last = logs[logs.length - 1];
+  if (last && last.e === null && Date.now() - last.s > STALE) {
+    const td = typicalDur(last);
+    last.e = last.s + Math.min(td || HOUR, 16 * HOUR);
+  }
 }
 const catOf = id => cats.find(c => c.id === id) || { id: '', name: 'Bez kategorije', icon: '', emoji: '', color: '#93958F' };
 const liveCats = () => cats.filter(c => c.name.trim());
@@ -654,7 +662,7 @@ function trailingGap() {
   const l = lastLog();
   if (!l || l.e === null) return null;
   const n = nowMs();
-  return n - l.e >= TRAIL_MIN * MIN ? { a: l.e, b: n } : null;
+  return (n - l.e >= TRAIL_MIN * MIN && n - l.e <= STALE) ? { a: l.e, b: n } : null;
 }
 const sameHole = (h, t) => h && t && h.a === t.a && h.b === t.b;
 function validTarget() {
@@ -849,7 +857,9 @@ function renderChain() {
   const host = $('chain'), run = running(), trail = trailingGap(), tgt = validTarget();
   const n = nowMs();
   const ended = run ? logs.slice(0, -1) : logs;
-  const start = Math.max(0, ended.length - 12), recent = ended.length - 3;
+  let start = Math.max(0, ended.length - CHAIN_MAX);
+  while (start < ended.length && ended[start].e < n - CHAIN_WIN) start++;
+  const recent = 0;
   const seen = new Set();
   let h = '';
   for (let i = start; i < logs.length; i++) {
@@ -895,7 +905,7 @@ function renderChain() {
 
 function freshHtml(F) {
   const c = catOf(F.catId), i = logs.indexOf(F), prev = logs[i - 1];
-  const holeBefore = prev && prev.e !== null && F.s - prev.e >= MIN;
+  const holeBefore = prev && prev.e !== null && F.s - prev.e >= MIN && F.s - prev.e <= STALE;
   const fixes = [];
   if (F.e !== null) {
     const td = typicalDur(F), d = F.e - F.s;

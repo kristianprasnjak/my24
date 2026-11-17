@@ -125,6 +125,11 @@ input,textarea{font:inherit;color:inherit}
 .row:active{background:var(--surface-2)}
 .row.sel{border:2px solid var(--text);background:var(--surface);padding:0 9px}
 .row.old{opacity:.5;height:34px}
+.row.plan{border:1.5px dashed var(--text-3);margin-top:4px}
+.row.plan.sel{border:2px solid var(--text)}
+.row.plan .pv{width:22px;height:22px;flex:none;border-radius:3px;background:var(--text);color:var(--bg);display:flex;align-items:center;justify-content:center}
+.row.plan .pv svg{width:9px;height:9px}
+.row.plan .tm b{color:var(--text);font-weight:600}
 .row .nm{flex:1;min-width:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row .tm{font-family:var(--font-num);font-size:12px;color:var(--text-2);white-space:nowrap}
 .row .od{color:var(--text-2);flex:none}
@@ -627,9 +632,13 @@ function normalize() {
 const catOf = id => cats.find(c => c.id === id) || { id: '', name: 'Bez kategorije', icon: '', emoji: '', color: '#93958F' };
 const liveCats = () => cats.filter(c => c.name.trim());
 const label = l => { const c = catOf(l.catId); return l.title ? c.name + ' · ' + l.title : c.name; };
-const endOf = l => l.e === null ? nowMs() : l.e;
-const running = () => { const l = logs[logs.length - 1]; return l && l.e === null ? l : null; };
-const lastLog = () => logs[logs.length - 1] || null;
+/* Planirani unos počinje u budućnosti. Ono što traje može imati kraj u budućnosti
+   (završit će kad počne planirano). */
+const endOf = l => l.e === null ? Math.max(nowMs(), l.s) : l.e;
+const pastLast = () => { const n = nowMs(); for (let i = logs.length - 1; i >= 0; i--) if (logs[i].s <= n) return logs[i]; return null; };
+const running = () => { const l = pastLast(), n = nowMs(); return l && (l.e === null || l.e > n) ? l : null; };
+const plannedList = () => { const n = nowMs(); return logs.filter(l => l.s > n); };
+const lastLog = pastLast;
 
 /* ---------- poništavanje ---------- */
 let undoStack = [];
@@ -654,14 +663,13 @@ function innerHoles() {
   const out = [];
   for (let i = 1; i < logs.length; i++) {
     const a = logs[i - 1].e, b = logs[i].s;
-    if (a !== null && b - a >= MIN) out.push({ a, b, i });
+    if (a !== null && b - a >= MIN && b <= nowMs()) out.push({ a, b, i });
   }
   return out;
 }
 function trailingGap() {
-  const l = lastLog();
-  if (!l || l.e === null) return null;
-  const n = nowMs();
+  const l = pastLast(), n = nowMs();
+  if (!l || l.e === null || l.e > n) return null;
   return (n - l.e >= TRAIL_MIN * MIN && n - l.e <= STALE) ? { a: l.e, b: n } : null;
 }
 const sameHole = (h, t) => h && t && h.a === t.a && h.b === t.b;
@@ -703,11 +711,12 @@ function guessFor(a, b) {
   return { catId: best, title, why: why(hits[best]) };
 }
 /* Što obično počinje oko ovog trenutka, inače što obično slijedi. */
-function guessStart(n, exclude) {
+function guessStart(n, excl) {
+  const ex = new Set([].concat(excl || []).concat(plannedList().map(l => l.catId)));
   const cnt = {}, hits = {};
   BACK.forEach(([d]) => {
     logs.forEach(l => {
-      if (!l.catId || l.catId === exclude) return;
+      if (!l.catId || ex.has(l.catId)) return;
       if (Math.abs(l.s - (n - d * DAY)) <= 45 * MIN) {
         cnt[l.catId] = (cnt[l.catId] || 0) + 1;
         (hits[l.catId] = hits[l.catId] || new Set()).add(d);
@@ -721,7 +730,7 @@ function guessStart(n, exclude) {
   if (last) {
     const nx = {};
     for (let i = 1; i < logs.length; i++) {
-      if (logs[i - 1].catId === last.catId && logs[i].s > n - 30 * DAY && logs[i].catId && logs[i].catId !== exclude)
+      if (logs[i - 1].catId === last.catId && logs[i].s > n - 30 * DAY && logs[i].catId && !ex.has(logs[i].catId))
         nx[logs[i].catId] = (nx[logs[i].catId] || 0) + 1;
     }
     let bn = null;
@@ -812,9 +821,16 @@ function setTime(id, field, ms) {
   const i = logs.findIndex(l => l.id === id); if (i < 0) return;
   const l = logs[i], prev = logs[i - 1], next = logs[i + 1], n = nowMs();
   if (field === 's') {
-    const lo = prev ? (prev.e === null ? prev.s + MIN : prev.e) : -Infinity;
-    const hi = (l.e === null ? n : l.e) - MIN;
+    const linked = prev && prev.e !== null && prev.e === l.s;          // prethodno je završilo točno kad je ovo počelo
+    const lo = prev ? (prev.e === null || linked ? prev.s + MIN : prev.e) : -Infinity;
+    const open = l.e === null && i === logs.length - 1;
+    const hi = open ? n + 16 * HOUR : (l.e === null ? n : l.e) - MIN;
+    const old = l.s;
     l.s = Math.max(lo, Math.min(hi, ms));
+    if (linked) {
+      if (l.s < old) prev.e = l.s;                     // počelo ranije: prethodno je kraće
+      else if (l.s > n) prev.e = l.s;                  // planirano: prethodno traje do tada
+    }
   } else {
     const hi = next ? next.s : n;
     l.e = Math.max(l.s + MIN, Math.min(hi, ms));
@@ -845,6 +861,16 @@ function holeHtml(h, cls, key) {
   return '<button class="hole ' + cls + pulse + '" data-hole="' + h.a + ',' + h.b + '">' +
     '<span class="q">?</span><span class="rg">' + hm(h.a) + '–' + hm(h.b) + '</span><span class="du">' + dur(h.b - h.a) + '</span></button>';
 }
+function runTime(r) {
+  return hm(r.s) + ' · ' + clock(Date.now() - r.s) + (r.e !== null && r.e > nowMs() ? ' → ' + hm(r.e) : '');
+}
+function planHtml(l, sel) {
+  const c = catOf(l.catId);
+  return '<button class="row plan' + (sel ? ' sel' : '') + '" data-id="' + l.id + '">' +
+    '<span class="pv">' + SVG_PLAY + '</span><i class="bar" style="background:' + c.color + '"></i>' + catMark(c, 17) +
+    '<span class="nm">' + esc(label(l)) + '</span>' +
+    '<span class="tm"><b>' + hm(l.s) + '</b> · za ' + dur(l.s - nowMs()) + '</span></button>';
+}
 function rowHtml(l, sel, old) {
   const c = catOf(l.catId);
   return '<button class="row' + (sel ? ' sel' : '') + (old && !sel ? ' old' : '') + '" data-id="' + l.id + '">' +
@@ -856,29 +882,29 @@ function rowHtml(l, sel, old) {
 function renderChain() {
   const host = $('chain'), run = running(), trail = trailingGap(), tgt = validTarget();
   const n = nowMs();
-  const ended = run ? logs.slice(0, -1) : logs;
-  let start = Math.max(0, ended.length - CHAIN_MAX);
-  while (start < ended.length && ended[start].e < n - CHAIN_WIN) start++;
-  const recent = 0;
+  const past = logs.filter(l => l.e !== null && l.e <= n);
+  const shown = past.slice(-CHAIN_MAX).filter(l => l.e >= n - CHAIN_WIN);
+  const seq = shown.concat(run ? [run] : []);
   const seen = new Set();
   let h = '';
-  for (let i = start; i < logs.length; i++) {
-    const l = logs[i], prev = logs[i - 1];
-    if (i > start && prev && prev.e !== null && l.s - prev.e >= MIN) {
+  seq.forEach((l, k) => {
+    const prev = seq[k - 1];
+    if (prev && prev.e !== null && l.s - prev.e >= MIN && l.s <= n) {
       const hole = { a: prev.e, b: l.s }, key = 'i' + hole.a + '-' + hole.b;
       h += holeHtml(hole, sameHole(hole, tgt) ? 'tgt' : '', key); seen.add(key);
     }
-    if (l.e !== null) h += rowHtml(l, ui.fresh === l.id, i < recent);
-  }
+    if (l !== run) h += rowHtml(l, ui.fresh === l.id, false);
+  });
   if (trail) { const key = 't' + trail.a; h += holeHtml(trail, 'trail', key); seen.add(key); }
 
   if (run) {
     const c = catOf(run.catId);
     h += '<div class="run" style="--live-c:' + c.color + '">' +
       '<span class="run-ico">' + catMark(c, 19, '#fff') + '</span>' +
-      '<button class="run-body" id="run-body"><b>' + esc(label(run)) + '</b><span id="run-time">' + hm(run.s) + ' · ' + clock(Date.now() - run.s) + '</span></button>' +
+      '<button class="run-body" id="run-body"><b>' + esc(label(run)) + '</b><span id="run-time">' + runTime(run) + '</span></button>' +
       '<button class="run-stop" id="run-stop">' + SVG_STOP + 'Završi</button></div>';
   }
+  plannedList().forEach(l => { h += planHtml(l, ui.fresh === l.id); });
 
   const F = logs.find(l => l.id === ui.fresh);
   if (F) h += freshHtml(F);
@@ -905,7 +931,8 @@ function renderChain() {
 
 function freshHtml(F) {
   const c = catOf(F.catId), i = logs.indexOf(F), prev = logs[i - 1];
-  const holeBefore = prev && prev.e !== null && F.s - prev.e >= MIN && F.s - prev.e <= STALE;
+  const isPlan = F.s > nowMs();
+  const holeBefore = !isPlan && prev && prev.e !== null && F.s - prev.e >= MIN && F.s - prev.e <= STALE;
   const fixes = [];
   if (F.e !== null) {
     const td = typicalDur(F), d = F.e - F.s;
@@ -917,7 +944,8 @@ function freshHtml(F) {
     '<div class="fr-top"><i class="bar" style="background:' + c.color + ';height:20px"></i>' +
     '<button class="tchip' + (holeBefore ? ' warn' : '') + '" id="f-s">' + hm(F.s) + '</button><span class="fr-dash">–</span>' +
     '<button class="tchip' + (fixes.length ? ' warn' : '') + '" id="f-e">' + (F.e === null ? '…' : hm(F.e)) + '</button>' +
-    '<span class="fr-dur">' + dur(endOf(F) - F.s) + '</span>' +
+    '<span class="fr-dur">' + (isPlan ? 'za ' + dur(F.s - nowMs()) : dur(endOf(F) - F.s)) + '</span>' +
+    (isPlan ? '<button class="sq" id="f-cancel" aria-label="Otkaži plan">✕</button>' : '') +
     '<button class="sq' + (ui.descEdit ? ' on' : (F.note ? ' has' : '')) + '" id="f-desc" aria-label="Opis">' + SVG_PEN + '</button>' +
     (undoStack.length ? '<button class="sq" id="f-undo" aria-label="Poništi">↺</button>' : '') + '</div>';
   if (fixes.length) h += '<div class="fixes">' + fixes.map(f => '<button class="fix" data-t="' + f.t + '"><b>' + hm(f.t) + '</b><span>' + esc(f.l) + '</span></button>').join('') + '</div>';
@@ -931,6 +959,13 @@ function bindFresh(F) {
   $('f-e').onclick = () => openWheel(F.id, 'e', []);
   $('f-desc').onclick = () => { ui.descEdit = !ui.descEdit; ui.nameEdit = false; renderToday(); if (ui.descEdit) { const t = $('f-dtxt'); t.value = F.note; t.focus(); } };
   if ($('f-undo')) $('f-undo').onclick = undo;
+  if ($('f-cancel')) $('f-cancel').onclick = () => {
+    snap();
+    const i = logs.indexOf(F), prev = logs[i - 1];
+    if (prev && prev.e === F.s && prev.s <= nowMs()) prev.e = null;      // ono prije opet traje
+    logs.splice(i, 1); ui.fresh = null; ui.target = null;
+    save(); renderAll();
+  };
   document.querySelectorAll('#fresh .fix').forEach(b => b.onclick = () => { snap(); setTime(F.id, 'e', +b.dataset.t); save(); renderAll(); });
   document.querySelectorAll('#fresh .nchip[data-n]').forEach(b => b.onclick = () => {
     updFresh({ title: F.title === b.dataset.n ? '' : b.dataset.n }); renderAll();
@@ -1058,13 +1093,15 @@ function openWheel(id, field, queue, sleep) {
   $('w-lbl').textContent = W.sleep ? (field === 's' ? '☾ ZASPAO' : '☀ PROBUDIO') : (field === 's' ? 'OD' : 'DO');
   const an = [];
   if (field === 's') {
-    if (prev && prev.e !== null) an.push({ t: prev.e, l: 'kraj ' + label(prev) });
+    if (prev && prev.e !== null) an.push({ t: prev.e, l: prev.e >= n ? 'sad' : 'kraj ' + label(prev) });
     BACK.slice(0, 2).forEach(([d, lb]) => {
       const ref = l.s - d * DAY;
       const m = logs.filter(x => x !== l && x.catId === l.catId && Math.abs(x.s - ref) <= 3 * HOUR)
                     .sort((x, y) => Math.abs(x.s - ref) - Math.abs(y.s - ref))[0];
-      if (m) { const t = m.s + d * DAY; if (t < endOf(l) && (!prev || prev.e === null || t >= prev.e) && !an.some(a => a.t === t)) an.push({ t, l: lb }); }
+      const lim = l.e === null ? n + 12 * HOUR : endOf(l);
+      if (m) { const t = m.s + d * DAY; if (t < lim && (!prev || prev.e === null || t >= prev.s + MIN) && !an.some(a => a.t === t)) an.push({ t, l: lb }); }
     });
+    if (l.e === null && !an.some(a => a.t === n)) an.push({ t: n, l: 'sad' });
   } else {
     BACK.slice(0, 2).forEach(([d, lb]) => {
       const ref = endOf(l) - d * DAY;
@@ -1085,6 +1122,12 @@ function resolveWheel() {
   const l = logs.find(x => x.id === W.id); if (!l) return null;
   const d = new Date(W.v), H = d.getHours(), M = d.getMinutes();
   if (W.field === 's') {
+    if (l.e === null) {
+      const n = nowMs(), c = new Date(n); c.setHours(H, M, 0, 0);
+      let t = +c;
+      if (t - n > 12 * HOUR) t -= DAY; else if (n - t > 12 * HOUR) t += DAY;
+      return t;
+    }
     const ref = endOf(l), c = new Date(ref); c.setHours(H, M, 0, 0);
     let t = +c; if (t >= ref) t -= DAY;
     return t;
@@ -1373,7 +1416,7 @@ function renderAll() { renderToday(); if (ui.tab === 'kal') renderKal(); }
 let lastMinute = nowMs();
 setInterval(() => {
   const r = running(), el = $('run-time');
-  if (r && el) el.textContent = hm(r.s) + ' · ' + clock(Date.now() - r.s);
+  if (r && el) el.textContent = runTime(r);
   const m = nowMs();
   if (m !== lastMinute) {
     lastMinute = m;

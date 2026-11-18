@@ -101,4 +101,5 @@ prije svakog prijedloga ili mockupa provjeriti da ga ništa ovdje ne krši.
 - **Prazno vrijeme ružno izgleda i komplicira.** Nema crvenih rupa. Ono što nije upisano je
   **Nekategorizirano** (naziv ovisi o jeziku; korisnik govori hrvatski), i nudi se kao izbor.
 - Mora se moći postaviti događaj koji počinje **sutra ili bilo kojeg točnog datuma** (i više planova odjednom).
+- **Nekategorizirano se mora moći obrisati:** prethodno tada traje do sljedećeg (ili opet traje do sad).
 - **Dodir na kategoriju nikad ne sprema odmah**, ni u „Što sad?”, ni kod popune ili podjele.

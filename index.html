@@ -278,6 +278,7 @@ input,textarea{font:inherit;color:inherit}
 .btn-main{flex:1;height:50px;border-radius:3px;background:var(--text);color:var(--bg);font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;gap:10px}
 .btn-main:active{transform:scale(.98)}
 .btn-quiet{flex:1;height:50px;border-radius:3px;background:var(--surface-2);font-weight:700;font-size:15px}
+.btn-quiet.danger{color:var(--danger)}
 .btn-del{width:50px;height:50px;border-radius:3px;background:var(--danger-soft);color:var(--danger);font-size:17px;flex:none}
 .lbl-row{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--text-2);text-transform:uppercase}
 .inp{width:100%;height:46px;border-radius:3px;border:1px solid var(--line);background:var(--surface-2);padding:0 12px;font-size:16px;outline:none}
@@ -382,7 +383,7 @@ input,textarea{font:inherit;color:inherit}
     <div class="wanch" id="w-anch"></div>
     <div id="x-body" style="display:flex;flex-direction:column;gap:12px"></div>
   </div>
-  <div class="sh-ft" id="x-ft"><button class="btn-del" id="x-del" aria-label="Obriši">🗑</button><button class="btn-quiet" id="x-split">Podijeli</button><button class="btn-main" id="x-ok">Gotovo</button><button class="btn-main" id="x-go"></button></div>
+  <div class="sh-ft" id="x-ft"><button class="btn-del" id="x-del" aria-label="Obriši">🗑</button><button class="btn-quiet" id="x-split">Podijeli</button><button class="btn-main" id="x-ok">Gotovo</button><button class="btn-main" id="x-go"></button><button class="btn-quiet danger hide" id="x-delgap">🗑 Obriši nekategorizirano</button></div>
 </div>
 
 <!-- kategorije -->
@@ -858,6 +859,30 @@ function splitAt(l, t, catId, title, note) {
   normalize(); save(); renderAll();
   if (rec) toastEntry(rec); else toast(NOCAT + ' od ' + hm(t), { undo: true });
 }
+/* Obriši nekategorizirano [a, b]: prethodno traje dalje do sljedećeg (ili opet traje do sad). */
+/* Brisanje ima smisla samo za kraće nekategorizirano (do 18 h) iza nekog unosa. */
+function canDeleteGap(a, b) {
+  const n = nowMs();
+  const prev = logs.filter(l => l.s < a && l.e !== null && l.e <= a).pop();
+  if (!prev) return false;
+  const next = logs.find(l => l.s >= b);
+  const end = !next || next.s > n ? n : next.s;
+  return end - prev.e <= STALE;
+}
+function deleteGap(a, b) {
+  snap();
+  const n = nowMs();
+  const prev = logs.filter(l => l.s < a && l.e !== null && l.e <= a).pop();
+  const next = logs.find(l => l.s >= b);
+  if (prev) {
+    if (!next || next.s > n) prev.e = null;          // ništa poslije do sad: prethodno opet traje (do plana, ako ga ima)
+    else prev.e = next.s;
+  } else if (next) {
+    next.s = a;                                      // nema prethodnog: sljedeće počinje ranije
+  }
+  normalize(); save(); renderAll();
+  toast('Nekategorizirano obrisano', { undo: true });
+}
 function removeEntry(l) {
   snap();
   logs = logs.filter(x => x !== l);
@@ -1189,7 +1214,7 @@ function renderSheet() {
     ni.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); done(); ni.blur(); } };
     ni.onblur = done;
   };
-  ['x-del', 'x-split', 'x-ok', 'x-go'].forEach(id => $(id).classList.add('hide'));
+  ['x-del', 'x-split', 'x-ok', 'x-go', 'x-delgap'].forEach(id => $(id).classList.add('hide'));
   $('x-ft').classList.remove('hide');
   $('x-title').onclick = null;
 
@@ -1222,7 +1247,9 @@ function renderSheet() {
       X.catId = cid; X.title = g && g.catId === cid ? g.title : ''; X.note = '';
       renderSheet();
     });
-    $('x-ft').classList.add('hide');
+    if (X.mode === 'gap' && canDeleteGap(X.gap.a, X.gap.b)) $('x-delgap').classList.remove('hide');
+    else if (X.mode === 'gap') $('x-ft').classList.add('hide');
+    else $('x-ft').classList.add('hide');
   } else {
     const l = entryOf(), c = catOf(l.catId);
     $('x-bar').style.background = c.color;
@@ -1251,6 +1278,7 @@ $('x-go').onclick = () => {
   else if (o.mode === 'split') splitAt(logs.find(x => x.id === o.splitId), t, o.catId, o.title, o.note);
   else startAt(o.catId, o.title, o.note, t);
 };
+$('x-delgap').onclick = () => { const g = X && X.gap; if (!g) return; X = null; closeSheet('sh-entry'); deleteGap(g.a, g.b); };
 $('x-del').onclick = () => { const l = entryOf(); if (!l) return; X.touched = false; closeSheet('sh-entry'); removeEntry(l); };
 $('x-split').onclick = () => { const l = entryOf(); if (!l) return; applyEdit(); openSplit(l.id); };
 
